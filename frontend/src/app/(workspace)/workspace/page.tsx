@@ -225,7 +225,10 @@ export default function WorkspaceDashboard() {
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
           <div className="space-y-3">
-            <Link href="/workspace/quotations" className="block w-full btn-primary text-center">
+            <Link href="/workspace/quotations/new" className="block w-full btn-primary text-center">
+              + New Quotation
+            </Link>
+            <Link href="/workspace/quotations" className="block w-full btn-secondary text-center">
               View Quotations
             </Link>
             <Link href="/workspace/approvals" className="block w-full btn-secondary text-center">
@@ -243,6 +246,22 @@ export default function WorkspaceDashboard() {
         {/* Recent Activity */}
         <div className="lg:col-span-2 bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
+          
+          {/* Counter Offer Alerts */}
+          {activity.filter(a => a.action === 'COUNTER_DISCOUNT').length > 0 && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-center gap-2 text-amber-800 font-medium text-sm mb-2">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Customer Counter Offers Pending Review
+              </div>
+              <p className="text-xs text-amber-700">
+                {activity.filter(a => a.action === 'COUNTER_DISCOUNT').length} customer(s) have submitted counter offers on your quotations.
+              </p>
+            </div>
+          )}
+          
           {activity.length > 0 ? (
             <div className="space-y-3">
               {activity.map((item) => (
@@ -394,18 +413,38 @@ function FulfillmentItem({
 
 function ActivityItem({ activity }: { activity: RecentActivity }) {
   const timeAgo = getTimeAgo(activity.createdAt);
+  
+  // Determine if this is a counter offer (important for sales reps)
+  const isCounterOffer = activity.action === 'COUNTER_DISCOUNT';
+  const isCustomerAction = activity.actorType === 'CUSTOMER';
 
   return (
-    <div className="flex items-start gap-3 py-2 border-b border-gray-100 last:border-0">
-      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-600">
-        {activity.actorName.charAt(0).toUpperCase()}
+    <div className={`flex items-start gap-3 py-2 border-b border-gray-100 last:border-0 ${isCounterOffer ? 'bg-amber-50 -mx-2 px-2 rounded' : ''}`}>
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
+        isCounterOffer 
+          ? 'bg-amber-200 text-amber-800' 
+          : isCustomerAction 
+            ? 'bg-blue-100 text-blue-600' 
+            : 'bg-gray-100 text-gray-600'
+      }`}>
+        {isCounterOffer ? '!' : activity.actorName.charAt(0).toUpperCase()}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-gray-900">
           <span className="font-medium">{activity.actorName}</span>{' '}
           {activity.description}
         </p>
-        <p className="text-xs text-gray-500 mt-0.5">{timeAgo}</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <p className="text-xs text-gray-500">{timeAgo}</p>
+          {isCounterOffer && activity.entityId && (
+            <Link 
+              href={`/workspace/quotations/${activity.entityId}`}
+              className="text-xs text-amber-600 hover:text-amber-700 font-medium"
+            >
+              View Quotation →
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );

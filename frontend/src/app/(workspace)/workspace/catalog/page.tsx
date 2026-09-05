@@ -22,6 +22,8 @@ interface Product {
   stockQty: number;
   isActive: boolean;
   variantCount: number;
+  unit: string;
+  taxPct: number;
   createdAt: string;
 }
 
@@ -32,6 +34,8 @@ interface ProductFormData {
   category: ProductCategory;
   costPrice: number;
   salePrice: number;
+  unit: string;
+  taxPct: number;
 }
 
 interface Pagination {
@@ -48,6 +52,8 @@ const INITIAL_FORM: ProductFormData = {
   category: ProductCategory.HARDWARE,
   costPrice: 0,
   salePrice: 0,
+  unit: 'unit',
+  taxPct: 0,
 };
 
 export default function CatalogPage() {
@@ -127,6 +133,8 @@ export default function CatalogPage() {
       category: product.category,
       costPrice: product.costPrice,
       salePrice: product.salePrice,
+      unit: product.unit || 'unit',
+      taxPct: product.taxPct || 0,
     });
     setFormErrors({});
     setEditingProduct(product);
@@ -150,6 +158,8 @@ export default function CatalogPage() {
     if (!formData.name.trim()) errors.name = 'Name is required';
     if (formData.costPrice < 0) errors.costPrice = 'Cost price must be non-negative';
     if (formData.salePrice <= 0) errors.salePrice = 'Sale price must be positive';
+    if (!formData.unit.trim()) errors.unit = 'Unit is required';
+    if (formData.taxPct < 0 || formData.taxPct > 100) errors.taxPct = 'Tax must be between 0-100%';
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -355,11 +365,14 @@ export default function CatalogPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Category
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Cost
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Unit
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Sale Price
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tax %
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Stock
@@ -389,11 +402,14 @@ export default function CatalogPage() {
                           {product.category}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
-                        {formatCurrency(product.costPrice)}
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600">
+                        {product.unit || 'unit'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
                         {formatCurrency(product.salePrice)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                        {product.taxPct || 0}%
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                         <span className={product.stockQty <= 10 ? 'text-red-600 font-medium' : 'text-gray-500'}>
@@ -537,6 +553,49 @@ export default function CatalogPage() {
                       error={formErrors.salePrice}
                     />
                   </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Unit
+                      </label>
+                      <select
+                        value={formData.unit}
+                        onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      >
+                        <option value="unit">Unit</option>
+                        <option value="hour">Hour</option>
+                        <option value="day">Day</option>
+                        <option value="month">Month</option>
+                        <option value="year">Year</option>
+                        <option value="license">License</option>
+                        <option value="seat">Seat</option>
+                      </select>
+                    </div>
+                    <Input
+                      label="Tax %"
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      max="100"
+                      value={formData.taxPct}
+                      onChange={(e) => setFormData(prev => ({ ...prev, taxPct: parseFloat(e.target.value) || 0 }))}
+                      error={formErrors.taxPct}
+                    />
+                  </div>
+
+                  {/* Subscription Info - shown when category is SUBSCRIPTION */}
+                  {formData.category === ProductCategory.SUBSCRIPTION && (
+                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                      <p className="text-sm text-purple-700 font-medium mb-2">
+                        Subscription Product
+                      </p>
+                      <p className="text-xs text-purple-600">
+                        This product will be billed on a recurring basis. Set up billing frequency and subscription plan details in the product's subscription plan settings after creation.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end gap-3 mt-6">

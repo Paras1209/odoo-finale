@@ -270,6 +270,23 @@ export async function getRecentActivity(limit = 20): Promise<RecentActivity[]> {
 }
 
 function formatActivityDescription(entityType: string, action: string, reason: string | null): string {
+  // Special handling for specific actions
+  if (action === 'COUNTER_DISCOUNT') {
+    return reason || 'Submitted counter offer on quotation';
+  }
+  
+  if (action === 'APPROVE' && entityType === 'QUOTATION') {
+    return `Approved quotation${reason ? `: ${reason}` : ''}`;
+  }
+  
+  if (action === 'REJECT' && entityType === 'QUOTATION') {
+    return `Rejected quotation${reason ? `: ${reason}` : ''}`;
+  }
+  
+  if (action === 'CONFIRM' && entityType === 'QUOTATION') {
+    return 'Confirmed quotation as order';
+  }
+
   const entity = entityType.toLowerCase().replace('_', ' ');
   const actionText = action.toLowerCase().replace('_', ' ');
   let description = `${actionText} ${entity}`;
