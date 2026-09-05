@@ -65,15 +65,26 @@ export default function QuotationBuilderPage() {
   // Transition state
   const [transitioning, setTransitioning] = useState(false);
 
+  const [suggestions, setSuggestions] = useState<Product[]>([]);
+
   useEffect(() => {
     fetchQuotation();
     fetchProducts();
   }, [id]);
 
+  const fetchSuggestions = async () => {
+    const res = await api.get<any>(`/quotation/${id}/suggestions`);
+    if (res.success && res.data) {
+      setSuggestions(res.data);
+    }
+  };
+
   const fetchQuotation = useCallback(async () => {
     const res = await api.get<any>(`/quotation/${id}`);
     if (res.success && res.data) {
       setQuotation(res.data);
+      // Fetch suggestions after getting quotation data
+      fetchSuggestions();
     }
     setLoading(false);
   }, [id]);
@@ -101,6 +112,23 @@ export default function QuotationBuilderPage() {
       setSelectedProductId('');
       setNewQuantity(1);
       setNewDiscountPct(0);
+    } else {
+      alert(res.error?.message || 'Error adding line');
+    }
+    setAddingLine(false);
+  };
+
+  const handleQuickAddLine = async (productId: string) => {
+    setAddingLine(true);
+    const res = await api.post<any>(`/quotation/${id}/lines`, {
+      productId,
+      quantity: 1,
+      discountPct: 0,
+      lineType: 'ONE_TIME',
+    });
+    
+    if (res.success) {
+      await fetchQuotation();
     } else {
       alert(res.error?.message || 'Error adding line');
     }
@@ -298,7 +326,7 @@ export default function QuotationBuilderPage() {
                 >
                   <option value="">Select Product...</option>
                   {products.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} - ${p.salePrice.toFixed(2)} ({p.category})</option>
+                    <option key={p.id} value={p.id}>{p.name} - ${Number(p.salePrice).toFixed(2)} ({p.category})</option>
                   ))}
                 </select>
               </div>
@@ -334,6 +362,33 @@ export default function QuotationBuilderPage() {
                 {addingLine && <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>}
                 Add Line
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Suggestions */}
+        {isDraft && suggestions.length > 0 && (
+          <div className="p-4 bg-indigo-50 border-b border-indigo-100">
+            <h3 className="text-sm font-semibold text-indigo-900 mb-3 flex items-center gap-2">
+              Suggested pairings based on current items:
+            </h3>
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {suggestions.map(s => (
+                <div key={s.id} className="bg-white border border-indigo-100 rounded-lg p-3 min-w-[200px] flex flex-col justify-between shadow-sm">
+                  <div>
+                    <p className="font-medium text-sm text-gray-900 line-clamp-1" title={s.name}>{s.name}</p>
+                    <p className="text-xs text-gray-500 mb-2">{s.category}</p>
+                    <p className="text-sm font-semibold text-gray-700">${Number(s.salePrice).toFixed(2)}</p>
+                  </div>
+                  <button 
+                    onClick={() => handleQuickAddLine(s.id)}
+                    disabled={addingLine}
+                    className="mt-3 w-full py-1.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded transition disabled:opacity-50"
+                  >
+                    + Add to Quote
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         )}
