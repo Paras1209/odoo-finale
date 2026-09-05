@@ -5,7 +5,7 @@ const nextConfig = {
   
   // Environment variables that should be available on the client
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '/api',
   },
   
   // Rewrites for API proxy during development (optional)
