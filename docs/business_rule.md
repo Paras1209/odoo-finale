@@ -17,49 +17,76 @@
 
 | Layer | Choice | Why |
 |---|---|---|
-| Backend | Node.js + Express (or NestJS if comfortable — gives you modules/DI out of the box) | Your strongest area; NestJS's module structure maps directly onto M1–M6 |
+| Frontend | Next.js 14+ (App Router) + TailwindCSS | Full-stack React framework with built-in API routes, SSR/SSG for fast loads, file-based routing, and excellent TypeScript support. Eliminates need for separate backend server for most use cases. |
+| Backend API | Next.js API Routes + Server Actions | Co-located with frontend, type-safe end-to-end, no CORS issues. Use Route Handlers for REST endpoints, Server Actions for mutations. |
 | DB | PostgreSQL | Relational integrity, transactions, window functions for dashboard aggregates |
-| ORM | Prisma | Type-safe schema, easy migrations, good for a time-boxed build |
-| Frontend | React + TailwindCSS | Your strength; Tailwind for fast, consistent UI |
-| Auth | JWT (short-lived access + refresh token), separate token scopes for internal vs portal users | Cleanly separates rep/manager auth from customer portal auth |
-| Real-time margin/UI updates | Client-side computed state (no need for websockets — recompute on every line change client-side, confirm with a lightweight API call on save) | Simpler than full real-time infra; still satisfies "live" requirement |
-| PDF export (dashboard/reports) | `pdfkit` or `puppeteer` (render HTML → PDF) | Puppeteer easier if you already have HTML report templates |
-| Background jobs (optional, if time permits) | `node-cron` or simple setTimeout-based job for billing schedule generation | Not essential for demo, but mention in architecture doc as production consideration |
+| ORM | Prisma | Type-safe schema, easy migrations, excellent Next.js integration |
+| Auth | NextAuth.js (Auth.js) with JWT strategy | Built-in session management, separate credential providers for internal users vs portal customers, middleware-based route protection |
+| Styling | TailwindCSS + shadcn/ui | Rapid UI development with accessible, customizable components |
+| Real-time margin/UI updates | Client-side computed state (React state + useMemo) | Recompute on every line change client-side, confirm with Server Actions on save. Simpler than websockets; satisfies "live" requirement |
+| PDF export (dashboard/reports) | `@react-pdf/renderer` or `puppeteer` | React-PDF for programmatic generation, Puppeteer for HTML-to-PDF if needed |
+| Background jobs (optional, if time permits) | Vercel Cron / `node-cron` for self-hosted | Schedule billing cycle advancement, stale deal notifications |
+
+### Next.js Project Structure
+```
+/app
+  /(auth)                    # Auth pages (login, signup)
+  /(internal)                # Internal workspace (rep, manager, finance)
+    /quotations
+    /approvals
+    /fulfillment
+    /billing
+    /dashboard
+  /(admin)                   # Backend config
+    /products
+    /warehouses
+    /discount-tiers
+    /subscription-plans
+  /(portal)                  # Customer-facing (separate layout, restricted)
+    /quotations/[id]
+  /api                       # REST endpoints if needed
+/lib
+  /services                  # Business logic (RiskScoreEngine, AuditLogger, etc.)
+  /db                        # Prisma client, queries
+/components                  # Shared UI components
+/prisma                      # Schema + migrations
+```
 
 ---
 
 ## 2. High-Level Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        React Frontend                            │
-│  ┌────────────────┐  ┌──────────────────┐  ┌──────────────────┐ │
-│  │ Internal        │  │ Customer Portal  │  │ Admin Backend    │ │
-│  │ Workspace (Rep/ │  │ (separate auth,  │  │ Config (M1,      │ │
-│  │ Manager/Finance)│  │ restricted view) │  │ discount rules,  │ │
-│  └────────────────┘  └──────────────────┘  │ warehouses, plans│ │
-│                                              └──────────────────┘ │
-└───────────────────────────┬───────────────────────────────────────┘
-                            │ REST API (JWT auth, role middleware)
-┌───────────────────────────▼───────────────────────────────────────┐
-│                     Express/NestJS API Layer                      │
-│  ┌──────────┐ ┌───────────────┐ ┌────────────┐ ┌────────────────┐ │
-│  │ Catalog  │ │ Quotation +   │ │ Fulfillment│ │ Billing/       │ │
-│  │ Service  │ │ Approval      │ │ Service    │ │ Subscription   │ │
-│  │ (M1)     │ │ Engine (M2)   │ │ (M3)       │ │ Service (M4)   │ │
-│  └──────────┘ └───────┬───────┘ └────────────┘ └────────────────┘ │
-│                        │ shared core services                     │
-│         ┌──────────────┴───────────────┬───────────────┐          │
-│         │ RiskScoreEngine               │ AuditLogger  │          │
-│         │ (pure fn, unit-testable)      │ (writes to   │          │
-│         │                                │ audit_log)   │          │
-│         └────────────────────────────────┴───────────────┘        │
-│  ┌──────────────────┐  ┌──────────────────────────────────────┐   │
-│  │ Portal Service    │  │ Dashboard/Reporting Service (M6)     │   │
-│  │ (M5, scoped auth) │  │ — read-only aggregate queries        │   │
-│  └──────────────────┘  └──────────────────────────────────────┘   │
-└───────────────────────────┬───────────────────────────────────────┘
-                            │
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Next.js App (App Router)                      │
+│  ┌────────────────┐  ┌──────────────────┐  ┌──────────────────────┐ │
+│  │ /(internal)     │  │ /(portal)        │  │ /(admin)             │ │
+│  │ Rep/Manager/    │  │ Customer Portal  │  │ Backend Config       │ │
+│  │ Finance Views   │  │ (separate layout,│  │ (products, discount  │ │
+│  │                 │  │ restricted auth) │  │ rules, warehouses)   │ │
+│  └────────────────┘  └──────────────────┘  └──────────────────────┘ │
+└───────────────────────────┬─────────────────────────────────────────┘
+                            │ Server Actions + API Routes
+                            │ (NextAuth.js middleware, role checks)
+┌───────────────────────────▼─────────────────────────────────────────┐
+│                     /lib/services (Business Logic)                   │
+│  ┌──────────┐ ┌───────────────┐ ┌────────────┐ ┌──────────────────┐ │
+│  │ Catalog  │ │ Quotation +   │ │ Fulfillment│ │ Billing/         │ │
+│  │ Service  │ │ Approval      │ │ Service    │ │ Subscription     │ │
+│  │ (M1)     │ │ Engine (M2)   │ │ (M3)       │ │ Service (M4)     │ │
+│  └──────────┘ └───────┬───────┘ └────────────┘ └──────────────────┘ │
+│                        │ shared core services                       │
+│         ┌──────────────┴───────────────┬───────────────┐            │
+│         │ RiskScoreEngine               │ AuditLogger  │            │
+│         │ (pure fn, unit-testable)      │ (writes to   │            │
+│         │                                │ audit_log)   │            │
+│         └────────────────────────────────┴───────────────┘          │
+│  ┌──────────────────┐  ┌──────────────────────────────────────────┐ │
+│  │ Portal Service    │  │ Dashboard/Reporting Service (M6)         │ │
+│  │ (M5, scoped auth) │  │ — read-only aggregate queries            │ │
+│  └──────────────────┘  └──────────────────────────────────────────┘ │
+└───────────────────────────┬─────────────────────────────────────────┘
+                            │ Prisma Client
                     ┌───────▼────────┐
                     │  PostgreSQL     │
                     └─────────────────┘
@@ -134,7 +161,9 @@ stock_levels ( id, warehouse_id FK, product_id FK, quantity_available )
 
 fulfillment_splits (
   id, quotation_line_id FK, warehouse_id FK, quantity_fulfilled,
-  is_backorder BOOL, is_manual_override BOOL
+  is_backorder BOOL, is_manual_override BOOL,
+  estimated_ship_date DATE,      -- For delivery slippage tracking
+  actual_ship_date DATE NULL     -- NULL until shipped; compare with estimated for slippage alerts
 )
 
 -- ===== BILLING & SUBSCRIPTIONS (M4) =====
@@ -318,6 +347,48 @@ def prorate(old_amount, new_amount, cycle_start, cycle_end, change_date):
 ```
 This produces a single adjustment line item (positive = extra charge, negative = credit) applied to the next invoice — don't try to retroactively rewrite past invoices.
 
+**Cancellation with Partial Refund:**
+```python
+def handle_cancellation(subscription_line, cancel_date):
+    """
+    Calculate prorated refund for mid-cycle cancellation and generate credit note.
+    """
+    current_cycle = get_current_billing_cycle(subscription_line)
+    
+    if not current_cycle:
+        return None  # No active cycle to refund
+    
+    total_days = (current_cycle.end_date - current_cycle.start_date).days
+    remaining_days = (current_cycle.end_date - cancel_date).days
+    
+    if remaining_days <= 0:
+        return None  # Cycle already ended, no refund needed
+    
+    fraction_unused = remaining_days / total_days
+    refund_amount = subscription_line.recurring_amount * fraction_unused
+    
+    # Create credit note for the unused portion
+    credit_note = create_credit_note(
+        invoice_id=current_cycle.invoice_id,
+        amount=refund_amount,
+        reason=f"Subscription cancellation - {remaining_days} days unused of {total_days} day cycle"
+    )
+    
+    # Cancel all future billing schedules
+    cancel_future_billing_schedules(subscription_line.id, cancel_date)
+    
+    # Update subscription status
+    subscription_line.status = 'CANCELLED'
+    subscription_line.cancelled_at = cancel_date
+    
+    return credit_note
+```
+
+**Cancellation rules to implement:**
+1. **Immediate cancellation**: Prorated refund for unused days in current cycle
+2. **End-of-cycle cancellation**: No refund, but stop future renewals
+3. **Grace period**: Optional configurable window before refund is issued (e.g., 24-48 hours to reverse cancellation)
+
 **Cancellation:** on cancel, if `remaining_days > 0`, auto-generate a `credit_notes` row for the prorated unused amount.
 
 ---
@@ -332,15 +403,15 @@ This produces a single adjustment line item (positive = extra charge, negative =
 
 ### M6 — Dashboard & Reporting
 
-Pick **3 real, live metrics** rather than building everything listed:
+Pick **4 real, live metrics** to cover all dashboard requirements:
 
 ```sql
--- Stalled deals
+-- 1. Stalled deals (quotations inactive for more than configured days)
 SELECT * FROM quotations
 WHERE status IN ('DRAFT','PENDING_MANAGER_APPROVAL')
   AND last_activity_at < NOW() - INTERVAL '3 days';
 
--- Discount anomaly (vs rep's own historical average)
+-- 2. Discount anomaly (vs rep's own historical average)
 WITH rep_avg AS (
   SELECT rep_id, AVG(discount_pct) as avg_discount
   FROM quotation_lines ql JOIN quotations q ON ql.quotation_id = q.id
@@ -351,7 +422,19 @@ JOIN quotations q ON ql.quotation_id = q.id
 JOIN rep_avg ON rep_avg.rep_id = q.rep_id
 WHERE ql.discount_pct > rep_avg.avg_discount * 1.5;
 
--- Deal health summary
+-- 3. Delivery promise slippage (late or at-risk shipments)
+SELECT fs.*, ql.product_id, q.customer_id
+FROM fulfillment_splits fs
+JOIN quotation_lines ql ON fs.quotation_line_id = ql.id
+JOIN quotations q ON ql.quotation_id = q.id
+WHERE 
+  -- Already late: shipped after estimated date
+  (fs.actual_ship_date IS NOT NULL AND fs.actual_ship_date > fs.estimated_ship_date)
+  OR
+  -- At risk: not shipped yet and estimated date is past or within 1 day
+  (fs.actual_ship_date IS NULL AND fs.estimated_ship_date <= NOW() + INTERVAL '1 day');
+
+-- 4. Deal health summary
 SELECT status, COUNT(*), SUM(total_amount) FROM quotations GROUP BY status;
 ```
 
