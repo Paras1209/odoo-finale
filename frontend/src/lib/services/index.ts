@@ -151,3 +151,21 @@ export {
   type ManualOverrideSplit,
   type FulfillmentFilters,
 } from './fulfillmentService';
+
+
+// Dashboard Service (M6 - Dev B)
+export {
+  getDashboardSummary,
+  getRecentActivity,
+  getDealHealthMetrics,
+  generateSalesReport,
+  getQuotationStatusBreakdown,
+  getRevenueTrend,
+  getFulfillmentPerformance,
+  type DashboardSummary,
+  type RecentActivity,
+  type AtRiskDeal,
+  type DealHealthMetrics,
+  type ReportFilters,
+  type SalesReport,
+} from './dashboardService';
