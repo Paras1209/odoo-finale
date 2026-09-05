@@ -54,6 +54,7 @@ const filterOptions = [
 export default function PortalOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -62,7 +63,7 @@ export default function PortalOrdersPage() {
   }, [statusFilter]);
 
   const fetchOrders = async () => {
-    setLoading(true);
+    if (!hasLoaded) setLoading(true);
     setError(null);
 
     const endpoint = statusFilter === 'all' 
@@ -78,7 +79,11 @@ export default function PortalOrdersPage() {
     }
     
     setLoading(false);
+    setHasLoaded(true);
   };
+
+  // Only show skeleton on very first load
+  const showSkeleton = loading && !hasLoaded;
 
   return (
     <div className="space-y-6">
@@ -109,7 +114,7 @@ export default function PortalOrdersPage() {
       </div>
 
       {/* Content */}
-      {loading ? (
+      {showSkeleton ? (
         <ListSkeleton />
       ) : error ? (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">

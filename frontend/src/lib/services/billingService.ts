@@ -1030,6 +1030,8 @@ export async function getInvoiceById(id: string) {
 
 /**
  * Generate invoice for a quotation
+ * Note: Invoice totalAmount matches the quotation total directly - no additional taxes are added
+ * The quotation's lineTotal values already represent the final negotiated prices
  */
 export async function generateInvoice(
   quotationId: string,
@@ -1055,18 +1057,16 @@ export async function generateInvoice(
       return { success: false, error: 'Quotation must be confirmed to generate invoice' };
     }
 
-    // Calculate totals
+    // Calculate totals - use line totals directly without adding extra taxes
+    // The quotation total already represents the final agreed-upon amount
     let amount = 0;
-    let taxAmount = 0;
 
     for (const line of quotation.lines) {
       // Filter by invoice type
       if (invoiceType === 'ONE_TIME' && line.lineType === 'ONE_TIME') {
         amount += line.lineTotal.toNumber();
-        taxAmount += line.lineTotal.toNumber() * (line.product.taxPct.toNumber() / 100);
       } else if (invoiceType === 'RECURRING' && line.lineType === 'RECURRING') {
         amount += line.lineTotal.toNumber();
-        taxAmount += line.lineTotal.toNumber() * (line.product.taxPct.toNumber() / 100);
       }
     }
 
@@ -1075,7 +1075,8 @@ export async function generateInvoice(
     }
 
     const invoiceNumber = await generateInvoiceNumber();
-    const totalAmount = amount + taxAmount;
+    // Total amount equals the sum of line totals - no additional tax
+    const totalAmount = amount;
     const defaultDueDate = new Date();
     defaultDueDate.setDate(defaultDueDate.getDate() + 30); // Net 30 default
 
@@ -1085,7 +1086,7 @@ export async function generateInvoice(
         quotationId,
         invoiceType,
         amount,
-        taxAmount,
+        taxAmount: 0, // No additional tax - price shown in quotation is final
         totalAmount,
         status: 'DRAFT',
         dueDate: dueDate ?? defaultDueDate,

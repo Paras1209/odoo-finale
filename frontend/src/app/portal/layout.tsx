@@ -30,18 +30,27 @@ export default function PortalLayout({
   const { data: session, status } = useSession();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // Track if we've ever been authenticated in this session
+  const [wasAuthenticated, setWasAuthenticated] = useState(false);
 
   const isLoginPage = pathname === '/portal/login';
 
   useEffect(() => {
+    if (status === 'authenticated' && session?.user?.actorType === ActorType.CUSTOMER) {
+      setWasAuthenticated(true);
+    }
+  }, [status, session]);
+
+  useEffect(() => {
     if (isLoginPage) return;
     
-    if (status === 'unauthenticated') {
+    // Only redirect if we're definitively unauthenticated and never were authenticated
+    if (status === 'unauthenticated' && !wasAuthenticated) {
       router.push('/portal/login');
     } else if (status === 'authenticated' && session?.user?.actorType !== ActorType.CUSTOMER) {
       router.push('/workspace');
     }
-  }, [status, session, router, isLoginPage]);
+  }, [status, session, router, isLoginPage, wasAuthenticated]);
 
   // Close mobile nav on route change
   useEffect(() => {
@@ -64,13 +73,24 @@ export default function PortalLayout({
     return <>{children}</>;
   }
 
-  // Loading states
-  if (status === 'loading' || isLoggingOut) {
-    return <LoadingScreen message={isLoggingOut ? 'Signing out...' : 'Loading...'} />;
+  // Show full-page loading ONLY on very first load (before any successful auth)
+  // Once authenticated, never show the layout loader again
+  if (!wasAuthenticated && (status === 'loading' || status === 'unauthenticated')) {
+    return <LoadingScreen message={status === 'loading' ? 'Loading...' : 'Redirecting to login...'} />;
   }
 
-  if (status === 'unauthenticated') {
-    return <LoadingScreen message="Redirecting to login..." />;
+  // Show logout overlay without blocking content
+  if (isLoggingOut) {
+    return (
+      <>
+        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-[100] flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mx-auto" />
+            <p className="mt-4 text-sm text-slate-500">Signing out...</p>
+          </div>
+        </div>
+      </>
+    );
   }
 
   if (!session?.user) {
@@ -244,7 +264,7 @@ export default function PortalLayout({
 
       {/* Page Content */}
       <main className="flex-1">
-        <div className="container-wide py-6">
+        <div className="container-wide py-6 page-transition">
           {children}
         </div>
       </main>

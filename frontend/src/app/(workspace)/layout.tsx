@@ -93,20 +93,42 @@ export default function WorkspaceLayout({
   const router = useRouter();
   const { user, isLoading, isAuthenticated, hasRole, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Track if we've ever been authenticated in this session
+  const [wasAuthenticated, setWasAuthenticated] = useState(false);
   
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (isAuthenticated && user) {
+      setWasAuthenticated(true);
+    }
+  }, [isAuthenticated, user]);
+  
+  useEffect(() => {
+    // Only redirect if we're definitively unauthenticated (not just loading)
+    // and we were never authenticated in this session
+    if (!isLoading && !isAuthenticated && !wasAuthenticated) {
       router.replace('/auth/login');
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, wasAuthenticated, router]);
 
   // Close sidebar on route change
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
   
-  if (isLoading || !isAuthenticated || !user) {
+  // Show full-page loading ONLY on very first load (before any successful auth)
+  // Once authenticated, never show the layout skeleton again
+  if (!wasAuthenticated && (isLoading || !isAuthenticated || !user)) {
     return <LoadingSkeleton />;
+  }
+
+  // After initial auth, use the cached user or current user
+  // This prevents flickering during brief session re-checks
+  const displayUser = user;
+  
+  if (!displayUser) {
+    // Edge case: was authenticated but now user is null
+    // This shouldn't happen normally, but handle gracefully
+    return null;
   }
   
   const filteredMainNav = mainNavigation.filter(item => !item.roles || hasRole(item.roles));
@@ -171,11 +193,11 @@ export default function WorkspaceLayout({
           <div className="p-3 border-t border-slate-200">
             <div className="flex items-center gap-3 p-2">
               <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-sm font-medium text-slate-600">
-                {user.name?.charAt(0).toUpperCase() || 'U'}
+                {displayUser.name?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-900 truncate">{user.name}</p>
-                <p className="text-xs text-slate-500 truncate">{getRoleDisplayName(user.role)}</p>
+                <p className="text-sm font-medium text-slate-900 truncate">{displayUser.name}</p>
+                <p className="text-xs text-slate-500 truncate">{getRoleDisplayName(displayUser.role)}</p>
               </div>
               <button
                 onClick={logout}
@@ -218,20 +240,20 @@ export default function WorkspaceLayout({
               
               {/* User menu for mobile */}
               <div className="lg:hidden flex items-center gap-2">
-                <RoleBadge role={user.role} />
+                <RoleBadge role={displayUser.role} />
               </div>
               
               {/* Desktop user info */}
               <div className="hidden lg:flex items-center gap-3 pl-3 border-l border-slate-200">
-                <span className="text-sm text-slate-600">{user.name}</span>
-                <RoleBadge role={user.role} />
+                <span className="text-sm text-slate-600">{displayUser.name}</span>
+                <RoleBadge role={displayUser.role} />
               </div>
             </div>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="p-4 lg:p-6">
+        <main className="p-4 lg:p-6 page-transition">
           {children}
         </main>
       </div>

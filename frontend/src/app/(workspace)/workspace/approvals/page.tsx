@@ -21,6 +21,7 @@ interface Approval {
 export default function ApprovalsPage() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('PENDING');
 
   useEffect(() => {
@@ -28,15 +29,19 @@ export default function ApprovalsPage() {
   }, [statusFilter]);
 
   const fetchApprovals = async () => {
-    setLoading(true);
+    if (!hasLoaded) setLoading(true);
     const res = await api.get<any>(`/approval?status=${statusFilter}`);
     if (res.success && res.data) {
       setApprovals(res.data.data || res.data);
     }
     setLoading(false);
+    setHasLoaded(true);
   };
 
   const pendingCount = approvals.filter(a => a.status === 'PENDING').length;
+
+  // Only show skeleton on very first load
+  const showSkeleton = loading && !hasLoaded;
 
   return (
     <div className="space-y-6">
@@ -77,7 +82,7 @@ export default function ApprovalsPage() {
 
       {/* Content */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        {loading ? (
+        {showSkeleton ? (
           <ListSkeleton />
         ) : approvals.length === 0 ? (
           <EmptyState statusFilter={statusFilter} />

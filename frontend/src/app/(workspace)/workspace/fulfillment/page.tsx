@@ -40,8 +40,8 @@ export default function FulfillmentPage() {
     setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const fetchQuotations = useCallback(async () => {
-    setLoading(true);
+  const fetchQuotations = useCallback(async (isInitial = false) => {
+    if (isInitial) setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/fulfillment/quotations', { cache: 'no-store' });
@@ -62,7 +62,7 @@ export default function FulfillmentPage() {
   }, []);
 
   useEffect(() => {
-    fetchQuotations();
+    fetchQuotations(true);
   }, [fetchQuotations]);
 
   const handleAction = async (quotationId: string, action: string, customMessage?: string) => {

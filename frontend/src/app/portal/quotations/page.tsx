@@ -15,21 +15,26 @@ interface Quotation {
 export default function PortalQuotationsPage() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
     fetchQuotations();
   }, []);
 
   const fetchQuotations = async () => {
-    setLoading(true);
+    if (!hasLoaded) setLoading(true);
     const res = await api.get<any>('/portal/quotations');
     if (res.success && res.data) {
       setQuotations(res.data.data || res.data);
     }
     setLoading(false);
+    setHasLoaded(true);
   };
 
   const awaitingReview = quotations.filter(q => q.status === 'APPROVED').length;
+
+  // Only show skeleton on very first load
+  const showSkeleton = loading && !hasLoaded;
 
   return (
     <div className="space-y-6">
@@ -58,7 +63,7 @@ export default function PortalQuotationsPage() {
 
       {/* Content */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        {loading ? (
+        {showSkeleton ? (
           <ListSkeleton />
         ) : quotations.length === 0 ? (
           <EmptyState />

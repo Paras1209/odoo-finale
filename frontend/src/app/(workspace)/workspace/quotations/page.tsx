@@ -29,6 +29,7 @@ const statusOptions = [
 export default function QuotationsPage() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -37,7 +38,7 @@ export default function QuotationsPage() {
   }, [statusFilter]);
 
   const fetchQuotations = async () => {
-    setLoading(true);
+    if (!hasLoaded) setLoading(true);
     const params = new URLSearchParams();
     if (statusFilter) params.append('status', statusFilter);
     
@@ -46,6 +47,7 @@ export default function QuotationsPage() {
       setQuotations(res.data.data || res.data);
     }
     setLoading(false);
+    setHasLoaded(true);
   };
 
   const filteredQuotations = quotations.filter(q => {
@@ -56,6 +58,9 @@ export default function QuotationsPage() {
       q.customerName.toLowerCase().includes(search)
     );
   });
+
+  // Only show full skeleton on first load
+  const showSkeleton = loading && !hasLoaded;
 
   return (
     <div className="space-y-6">
@@ -102,7 +107,7 @@ export default function QuotationsPage() {
 
       {/* Content */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        {loading ? (
+        {showSkeleton ? (
           <TableSkeleton />
         ) : filteredQuotations.length === 0 ? (
           <EmptyState 

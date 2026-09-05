@@ -36,14 +36,19 @@ interface DashboardStats {
 export default function PortalDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboard();
   }, []);
 
-  const fetchDashboard = async () => {
-    setLoading(true);
+  const fetchDashboard = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     
     const res = await api.get<DashboardStats>('/portal/dashboard');
@@ -55,9 +60,12 @@ export default function PortalDashboard() {
     }
     
     setLoading(false);
+    setRefreshing(false);
   };
 
-  if (loading) {
+  // Only show skeleton on first load, not on subsequent visits
+  // Once we have data, show the content with a subtle refresh indicator
+  if (loading && !stats) {
     return <DashboardSkeleton />;
   }
 
@@ -86,11 +94,14 @@ export default function PortalDashboard() {
           <p className="text-slate-500 mt-1">Here's what's happening with your account</p>
         </div>
         <button 
-          onClick={fetchDashboard}
+          onClick={() => fetchDashboard(true)}
+          disabled={refreshing}
           className="btn-ghost btn-sm text-slate-500"
         >
-          <RefreshIcon />
-          Refresh
+          <span className={refreshing ? 'animate-spin' : ''}>
+            <RefreshIcon />
+          </span>
+          {refreshing ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
 

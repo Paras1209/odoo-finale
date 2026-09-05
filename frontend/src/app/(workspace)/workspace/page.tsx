@@ -55,12 +55,13 @@ export default function WorkspaceDashboard() {
   const [activity, setActivity] = useState<RecentActivity[]>([]);
   const [statusBreakdown, setStatusBreakdown] = useState<StatusBreakdown[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadDashboard() {
       try {
-        setLoading(true);
+        if (!hasLoaded) setLoading(true);
         const [summaryRes, activityRes, breakdownRes] = await Promise.all([
           fetch('/api/dashboard?view=summary'),
           fetch('/api/dashboard?view=activity&limit=10'),
@@ -79,13 +80,15 @@ export default function WorkspaceDashboard() {
         console.error(err);
       } finally {
         setLoading(false);
+        setHasLoaded(true);
       }
     }
 
     loadDashboard();
-  }, []);
+  }, [hasLoaded]);
 
-  if (loading) {
+  // Only show skeleton on very first load
+  if (loading && !hasLoaded) {
     return <DashboardSkeleton />;
   }
 
