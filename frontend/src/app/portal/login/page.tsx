@@ -1,16 +1,18 @@
 // ===========================================
 // DealFlow360 - Customer Portal Login Page
 // ===========================================
-// PHASE 0: Stub login page for portal customers.
-// TODO: Implement actual auth in Phase 1
+// Customer portal authentication using NextAuth.js
 // ===========================================
 
 'use client';
 
 import { useState } from 'react';
+import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function PortalLoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,22 +23,20 @@ export default function PortalLoginPage() {
     setError('');
     setLoading(true);
 
-    // TODO: Implement actual login in Phase 1
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/portal/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const result = await signIn('portal', {
+        email,
+        password,
+        redirect: false,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error?.message || 'Login failed');
+      if (result?.error) {
+        throw new Error(result.error);
       }
 
-      // TODO: Store token and redirect
-      alert('Portal login successful! (redirect not implemented in Phase 0)');
+      // Redirect to portal dashboard on successful login
+      router.push('/portal/dashboard');
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

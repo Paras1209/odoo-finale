@@ -1,16 +1,18 @@
 // ===========================================
 // DealFlow360 - Internal Login Page
 // ===========================================
-// PHASE 0: Stub login page for internal users.
-// TODO: Implement actual auth in Phase 1
+// Internal user authentication using NextAuth.js
 // ===========================================
 
 'use client';
 
 import { useState } from 'react';
+import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,25 +23,20 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    // TODO: Implement actual login in Phase 1
-    // This is a stub that simulates the flow
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const result = await signIn('internal', {
+        email,
+        password,
+        redirect: false,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error?.message || 'Login failed');
+      if (result?.error) {
+        throw new Error(result.error);
       }
 
-      // TODO: Store token and redirect
-      // localStorage.setItem('token', data.data.token);
-      // router.push('/workspace');
-      alert('Login successful! (redirect not implemented in Phase 0)');
+      // Redirect to workspace on successful login
+      router.push('/workspace');
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

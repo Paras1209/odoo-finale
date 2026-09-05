@@ -58,3 +58,44 @@ export {
   getApprovalRequirements,
   calculateWeightedOverage,
 } from './riskScoreEngine';
+
+// Catalog Service (M1 - Dev B)
+export {
+  // Product functions
+  getProducts,
+  getProductById,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  // Variant functions
+  getProductVariants,
+  createVariant,
+  updateVariant,
+  deleteVariant,
+  // Price list functions
+  getPriceLists,
+  getPriceListById,
+  createPriceList,
+  updatePriceList,
+  deletePriceList,
+  upsertPriceListItems,
+  deletePriceListItem,
+  // Price resolution (used by M2 Quotation)
+  getProductPrice,
+  getProductPrices,
+  // Utility functions
+  getActiveProductsForSelect,
+  getProductsByCategory,
+  isSkuUnique,
+  // Types
+  type ProductFilters,
+  type PaginationOptions,
+  type CreateProductInput,
+  type UpdateProductInput,
+  type CreateVariantInput,
+  type UpdateVariantInput,
+  type PriceListFilters,
+  type CreatePriceListInput,
+  type UpdatePriceListInput,
+  type PriceListItemInput,
+} from './catalogService';

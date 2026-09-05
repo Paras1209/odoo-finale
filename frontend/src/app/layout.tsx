@@ -1,11 +1,12 @@
 // ===========================================
 // DealFlow360 - Root Layout
 // ===========================================
-// PHASE 0: Root layout with providers.
+// Root layout with session provider
 // ===========================================
 
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { SessionProvider } from '@/components/providers';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -23,8 +24,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        {/* TODO: Add AuthProvider wrapper in Phase 1 */}
-        {children}
+        <SessionProvider>
+          {children}
+        </SessionProvider>
       </body>
     </html>
   );

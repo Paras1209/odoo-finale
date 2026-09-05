@@ -21,20 +21,28 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const pagination = paginationSchema.parse({
-      page: searchParams.get('page'),
-      pageSize: searchParams.get('pageSize'),
-      sortBy: searchParams.get('sortBy'),
-      sortOrder: searchParams.get('sortOrder'),
-    });
+    
+    // Build pagination params, only including values that exist
+    const paginationInput: Record<string, string | undefined> = {};
+    const pageParam = searchParams.get('page');
+    const pageSizeParam = searchParams.get('pageSize');
+    const sortByParam = searchParams.get('sortBy');
+    const sortOrderParam = searchParams.get('sortOrder');
+    
+    if (pageParam) paginationInput.page = pageParam;
+    if (pageSizeParam) paginationInput.pageSize = pageSizeParam;
+    if (sortByParam) paginationInput.sortBy = sortByParam;
+    if (sortOrderParam) paginationInput.sortOrder = sortOrderParam;
+    
+    const pagination = paginationSchema.parse(paginationInput);
 
     const categoryParam = searchParams.get('category');
-    const isActive = searchParams.get('isActive');
+    const isActiveParam = searchParams.get('isActive');
     const search = searchParams.get('search');
 
     const where = {
       ...(categoryParam && { category: categoryParam as ProductCategory }),
-      ...(isActive !== null && { isActive: isActive === 'true' }),
+      ...(isActiveParam && { isActive: isActiveParam === 'true' }),
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' as const } },
@@ -46,6 +54,14 @@ export async function GET(request: NextRequest) {
     const [products, total] = await Promise.all([
       prisma.product.findMany({
         where,
+        include: {
+          _count: {
+            select: { variants: true },
+          },
+          stockLevels: {
+            select: { quantityAvailable: true },
+          },
+        },
         orderBy: { [pagination.sortBy || 'createdAt']: pagination.sortOrder },
         skip: (pagination.page - 1) * pagination.pageSize,
         take: pagination.pageSize,
@@ -62,16 +78,18 @@ export async function GET(request: NextRequest) {
         category: p.category,
         costPrice: p.costPrice.toNumber(),
         salePrice: p.salePrice.toNumber(),
+        stockQty: p.stockLevels.reduce((sum, sl) => sum + sl.quantityAvailable, 0),
         unit: p.unit,
         taxPct: p.taxPct.toNumber(),
         description: p.description,
         isActive: p.isActive,
+        variantCount: p._count.variants,
         createdAt: p.createdAt.toISOString(),
       })),
       pagination: {
         page: pagination.page,
         pageSize: pagination.pageSize,
-        totalItems: total,
+        total: total,
         totalPages: Math.ceil(total / pagination.pageSize),
       },
     });
