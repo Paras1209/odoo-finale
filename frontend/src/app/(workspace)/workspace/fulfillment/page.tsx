@@ -1,118 +1,58 @@
-// ===========================================
-// DealFlow360 - Fulfillment List Page
-// ===========================================
-// DEV B's MODULE: Fulfillment splits with filters and status indicators
-// ===========================================
-
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
-// Local enum to avoid importing from @prisma/client in client component
-type FulfillmentStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
-
-// Types for fulfillment data
-interface FulfillmentSplit {
+interface QuotationFulfillmentGroup {
   id: string;
-  quotationLineId: string;
-  warehouseId: string;
-  warehouseName: string;
-  warehouseCode: string;
-  quantityFulfilled: number;
-  isBackorder: boolean;
-  isManualOverride: boolean;
-  estimatedShipDate: string | null;
-  actualShipDate: string | null;
-  status: FulfillmentStatus;
-  product: {
-    id: string;
-    name: string;
-    sku: string | null;
-    category: string;
-  };
-  quotation: {
-    id: string;
-    quotationNumber: string;
-    status: string;
-    customerName: string;
-  };
-  lineQuantity: number;
+  quotationNumber: string;
+  customerName: string;
+  companyName: string | null;
+  totalAmount: string;
   createdAt: string;
-  updatedAt: string;
+  hasBackorder?: boolean;
+  warehouseId?: string;
+  warehouseName?: string;
+  lines: {
+    lineId: string;
+    productName: string;
+    quantity: number;
+    splits: {
+      warehouseId: string;
+      warehouseName: string;
+      warehouseCode: string;
+      quantity: number;
+      availableStock: number;
+    }[];
+    isBackorder: boolean;
+    shortfall: number;
+  }[];
 }
-
-interface FulfillmentSummary {
-  total: number;
-  pending: number;
-  processing: number;
-  shipped: number;
-  delivered: number;
-  cancelled: number;
-  backorders: number;
-}
-
-interface Pagination {
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-}
-
-// Status badge colors
-const statusColors: Record<FulfillmentStatus, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800',
-  PROCESSING: 'bg-blue-100 text-blue-800',
-  SHIPPED: 'bg-purple-100 text-purple-800',
-  DELIVERED: 'bg-green-100 text-green-800',
-  CANCELLED: 'bg-red-100 text-red-800',
-};
 
 export default function FulfillmentPage() {
-  const [fulfillments, setFulfillments] = useState<FulfillmentSplit[]>([]);
-  const [summary, setSummary] = useState<FulfillmentSummary | null>(null);
-  const [pagination, setPagination] = useState<Pagination | null>(null);
+  const [canBeFulfilled, setCanBeFulfilled] = useState<QuotationFulfillmentGroup[]>([]);
+  const [awaitingFulfillment, setAwaitingFulfillment] = useState<QuotationFulfillmentGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [backorderFilter, setBackorderFilter] = useState<string>('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
-  // Fetch summary
-  const fetchSummary = useCallback(async () => {
-    try {
-      const res = await fetch('/api/fulfillment?view=summary');
-      const data = await res.json();
-      if (data.success) {
-        setSummary(data.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch summary:', err);
-    }
-  }, []);
+  const toggleRow = (id: string) => {
+    setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
-  // Fetch fulfillments
-  const fetchFulfillments = useCallback(async () => {
+  const fetchQuotations = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams();
-      params.set('page', currentPage.toString());
-      params.set('pageSize', '20');
-      if (statusFilter) params.set('status', statusFilter);
-      if (backorderFilter) params.set('isBackorder', backorderFilter);
-
-      const res = await fetch(`/api/fulfillment?${params.toString()}`);
+      const res = await fetch('/api/fulfillment/quotations');
       const data = await res.json();
 
       if (data.success) {
-        setFulfillments(data.data);
-        setPagination(data.pagination);
+        setCanBeFulfilled(data.data.canBeFulfilled);
+        setAwaitingFulfillment(data.data.awaitingFulfillment);
       } else {
-        setError(data.error?.message || 'Failed to fetch fulfillments');
+        setError(data.error?.message || 'Failed to fetch quotations');
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -120,294 +60,179 @@ export default function FulfillmentPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, statusFilter, backorderFilter]);
+  }, []);
 
   useEffect(() => {
-    fetchSummary();
-  }, [fetchSummary]);
+    fetchQuotations();
+  }, [fetchQuotations]);
 
-  useEffect(() => {
-    fetchFulfillments();
-  }, [fetchFulfillments]);
+  const handleAction = async (quotationId: string, action: string) => {
+    if (!confirm(`Are you sure you want to perform action: ${action}?`)) return;
 
-  // Filter fulfillments by search query (client-side)
-  const filteredFulfillments = fulfillments.filter((f) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      f.product.name.toLowerCase().includes(query) ||
-      f.product.sku?.toLowerCase().includes(query) ||
-      f.quotation.quotationNumber.toLowerCase().includes(query) ||
-      f.quotation.customerName.toLowerCase().includes(query) ||
-      f.warehouseName.toLowerCase().includes(query)
-    );
-  });
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString();
+    try {
+      const res = await fetch(`/api/fulfillment/quotations/${quotationId}/action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Action successful');
+        fetchQuotations();
+      } else {
+        alert('Action failed: ' + data.error?.message);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error while performing action.');
+    }
   };
 
+  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString();
+
   return (
-    <div>
-      {/* Header */}
+    <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Fulfillment</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Quotation Fulfillment</h1>
         <Link href="/workspace/fulfillment/warehouses" className="btn-primary">
           Manage Warehouses
         </Link>
       </div>
 
-      {/* Summary Cards */}
-      {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
-          <SummaryCard label="Total" value={summary.total} color="gray" />
-          <SummaryCard label="Pending" value={summary.pending} color="yellow" />
-          <SummaryCard label="Processing" value={summary.processing} color="blue" />
-          <SummaryCard label="Shipped" value={summary.shipped} color="purple" />
-          <SummaryCard label="Delivered" value={summary.delivered} color="green" />
-          <SummaryCard label="Cancelled" value={summary.cancelled} color="red" />
-          <SummaryCard label="Backorders" value={summary.backorders} color="orange" highlight />
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="card mb-6">
-        <div className="flex flex-wrap gap-4">
-          <input
-            type="text"
-            placeholder="Search by product, quote #, customer..."
-            className="input-field flex-1 min-w-[200px]"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <select
-            className="input-field w-40"
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-          >
-            <option value="">All Statuses</option>
-            <option value="PENDING">Pending</option>
-            <option value="PROCESSING">Processing</option>
-            <option value="SHIPPED">Shipped</option>
-            <option value="DELIVERED">Delivered</option>
-            <option value="CANCELLED">Cancelled</option>
-          </select>
-          <select
-            className="input-field w-40"
-            value={backorderFilter}
-            onChange={(e) => {
-              setBackorderFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-          >
-            <option value="">All Orders</option>
-            <option value="true">Backorders Only</option>
-            <option value="false">Regular Orders</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Error State */}
       {error && (
-        <div className="card mb-6 bg-red-50 border-red-200">
-          <p className="text-red-700">{error}</p>
-          <button onClick={fetchFulfillments} className="btn-secondary mt-2">
-            Retry
-          </button>
+        <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700">
+          {error}
         </div>
       )}
 
-      {/* Loading State */}
-      {loading && (
-        <div className="card">
-          <div className="animate-pulse space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-12 bg-gray-200 rounded"></div>
-            ))}
-          </div>
+      {loading ? (
+        <div className="animate-pulse space-y-4">
+          <div className="h-12 bg-gray-200 rounded"></div>
+          <div className="h-12 bg-gray-200 rounded"></div>
+          <div className="h-12 bg-gray-200 rounded"></div>
         </div>
-      )}
-
-      {/* Fulfillment Table */}
-      {!loading && !error && (
-        <div className="card overflow-hidden">
-          {filteredFulfillments.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">
-              No fulfillment records found.
-            </p>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Product
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Quotation
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Warehouse
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Qty
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Est. Ship
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Flags
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
+      ) : (
+        <>
+          {/* Section 1: Can be fulfilled */}
+          <div className="card overflow-hidden">
+            <h2 className="text-xl font-bold text-gray-800 p-4 border-b bg-gray-50">Can be fulfilled (Single Warehouse)</h2>
+            {canBeFulfilled.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No quotations ready for single-warehouse fulfillment.</p>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-white">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quote #</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Warehouse</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {canBeFulfilled.map(q => (
+                    <tr key={q.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-4 font-medium">{q.quotationNumber}</td>
+                      <td className="px-4 py-4">{q.customerName} {q.companyName ? `(${q.companyName})` : ''}</td>
+                      <td className="px-4 py-4 text-green-700 font-semibold">{q.warehouseName}</td>
+                      <td className="px-4 py-4 text-gray-500">{formatDate(q.createdAt)}</td>
+                      <td className="px-4 py-4 text-right">
+                        <button onClick={() => handleAction(q.id, 'ACCEPT_SPLIT')} className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded">
+                          Accept & Process
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredFulfillments.map((f) => (
-                      <tr key={f.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {f.product.name}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {f.product.sku || 'No SKU'} | {f.product.category}
-                          </div>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Section 2: Order awaiting fulfillment */}
+          <div className="card overflow-hidden mt-8">
+            <h2 className="text-xl font-bold text-gray-800 p-4 border-b bg-gray-50">Order Awaiting Fulfillment (Splits & Backorders)</h2>
+            {awaitingFulfillment.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No quotations waiting for fulfillment.</p>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-white">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-8"></th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quote #</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {awaitingFulfillment.map(q => (
+                    <React.Fragment key={q.id}>
+                      <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => toggleRow(q.id)}>
+                        <td className="px-4 py-4 text-gray-400">
+                          {expandedRows[q.id] ? '▼' : '▶'}
                         </td>
-                        <td className="px-4 py-4">
-                          <div className="text-sm text-gray-900">
-                            {f.quotation.quotationNumber}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {f.quotation.customerName}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="text-sm text-gray-900">
-                            {f.warehouseName}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {f.warehouseCode}
-                          </div>
-                        </td>
+                        <td className="px-4 py-4 font-medium">{q.quotationNumber}</td>
+                        <td className="px-4 py-4">{q.customerName} {q.companyName ? `(${q.companyName})` : ''}</td>
                         <td className="px-4 py-4 text-center">
-                          <span className="text-sm font-medium">
-                            {f.quantityFulfilled}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            /{f.lineQuantity}
-                          </span>
+                          {q.hasBackorder ? (
+                            <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-bold rounded-full">Backorder</span>
+                          ) : (
+                            <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-bold rounded-full">Split Required</span>
+                          )}
                         </td>
-                        <td className="px-4 py-4 text-center">
-                          <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[f.status]}`}
-                          >
-                            {f.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-500">
-                          {formatDate(f.estimatedShipDate)}
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <div className="flex justify-center gap-1">
-                            {f.isBackorder && (
-                              <span className="px-2 py-0.5 text-xs bg-orange-100 text-orange-800 rounded">
-                                Backorder
-                              </span>
-                            )}
-                            {f.isManualOverride && (
-                              <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-800 rounded">
-                                Manual
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-right">
-                          <Link
-                            href={`/workspace/fulfillment/${f.id}`}
-                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                          >
-                            View
-                          </Link>
-                        </td>
+                        <td className="px-4 py-4 text-gray-500">{formatDate(q.createdAt)}</td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination */}
-              {pagination && pagination.totalPages > 1 && (
-                <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-                  <div className="text-sm text-gray-500">
-                    Showing {(pagination.page - 1) * pagination.pageSize + 1} to{' '}
-                    {Math.min(pagination.page * pagination.pageSize, pagination.total)} of{' '}
-                    {pagination.total} results
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="btn-secondary disabled:opacity-50"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
-                      disabled={currentPage === pagination.totalPages}
-                      className="btn-secondary disabled:opacity-50"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+                      {expandedRows[q.id] && (
+                        <tr className="bg-gray-50 border-b">
+                          <td colSpan={5} className="px-8 py-4">
+                            <div className="bg-white border p-4 rounded shadow-sm">
+                              <h3 className="font-bold mb-3 border-b pb-2 text-gray-700">Fulfillment Summary</h3>
+                              <ul className="space-y-3 mb-6">
+                                {q.lines.map(line => (
+                                  <li key={line.lineId} className="flex justify-between items-center text-sm">
+                                    <div>
+                                      <span className="font-semibold text-gray-800">{line.productName}</span> 
+                                      <span className="text-gray-500 ml-2">(Qty: {line.quantity})</span>
+                                    </div>
+                                    <div className="flex gap-2 text-right">
+                                      {line.isBackorder ? (
+                                        <span className="text-red-600 font-medium">Backordered ({line.shortfall} missing)</span>
+                                      ) : (
+                                        line.splits.map((s, idx) => (
+                                          <span key={idx} className="bg-gray-100 px-2 py-1 rounded border text-gray-600">
+                                            {s.warehouseName}: {s.quantity}
+                                          </span>
+                                        ))
+                                      )}
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                              <div className="flex justify-end gap-3 pt-3 border-t">
+                                {q.hasBackorder ? (
+                                  <>
+                                    <button onClick={() => handleAction(q.id, 'CANCEL')} className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 font-medium">Cancel Order</button>
+                                    <button onClick={() => handleAction(q.id, 'KEEP_ACTIVE')} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium">Keep Active</button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button onClick={() => handleAction(q.id, 'REJECT')} className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 font-medium">Reject Split</button>
+                                    <button onClick={() => handleAction(q.id, 'ACCEPT_SPLIT')} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium">Accept Split</button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
       )}
-    </div>
-  );
-}
-
-// Summary Card Component
-function SummaryCard({
-  label,
-  value,
-  color,
-  highlight,
-}: {
-  label: string;
-  value: number;
-  color: string;
-  highlight?: boolean;
-}) {
-  const colorClasses: Record<string, string> = {
-    gray: 'bg-gray-50 border-gray-200',
-    yellow: 'bg-yellow-50 border-yellow-200',
-    blue: 'bg-blue-50 border-blue-200',
-    purple: 'bg-purple-50 border-purple-200',
-    green: 'bg-green-50 border-green-200',
-    red: 'bg-red-50 border-red-200',
-    orange: 'bg-orange-50 border-orange-200',
-  };
-
-  return (
-    <div
-      className={`p-4 rounded-lg border ${colorClasses[color]} ${
-        highlight ? 'ring-2 ring-orange-300' : ''
-      }`}
-    >
-      <div className="text-2xl font-bold text-gray-900">{value}</div>
-      <div className="text-xs text-gray-600">{label}</div>
     </div>
   );
 }
