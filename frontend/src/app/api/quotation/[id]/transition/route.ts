@@ -7,7 +7,10 @@ import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { ActorType, QuotationStatus, RiskScoreResult } from '@/lib/types';
 import { transitionQuotationSchema } from '@/lib/validators';
-import { auditLogger, evaluateQuotation, dealEvents } from '@/lib/services';
+import { auditLogger, evaluateQuotation, dealEvents, registerBillingEventHandlers } from '@/lib/services';
+
+// Ensure billing event handlers are registered
+registerBillingEventHandlers();
 
 interface RouteParams {
   params: Promise<{ id: string }>;

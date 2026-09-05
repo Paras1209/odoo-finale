@@ -1,0 +1,502 @@
+[
+  {
+    "id": "cywrh23ssianvc2iib905wblr",
+    "name": "Mumbai Warehouse",
+    "code": "WH-MUM00",
+    "address": "Plot 167, Industrial Area, Mumbai",
+    "shippingCostWeight": "0.55",
+    "isActive": true,
+    "createdAt": "2022-12-04T00:00:00.000Z",
+    "updatedAt": "2025-04-08T00:00:00.000Z"
+  },
+  {
+    "id": "c3af0ofxq3chy2x869cuunmft",
+    "name": "Delhi NCR Warehouse",
+    "code": "WH-DEL01",
+    "address": "Survey No. 94, Logistics Park, Delhi NCR",
+    "shippingCostWeight": "1.50",
+    "isActive": true,
+    "createdAt": "2022-07-01T00:00:00.000Z",
+    "updatedAt": "2023-03-13T00:00:00.000Z"
+  },
+  {
+    "id": "cj4fz9acvsul9eyw4l17ig7gp",
+    "name": "Bengaluru Warehouse",
+    "code": "WH-BEN02",
+    "address": "Plot 175, MIDC, Bengaluru",
+    "shippingCostWeight": "1.85",
+    "isActive": true,
+    "createdAt": "2024-09-19T00:00:00.000Z",
+    "updatedAt": "2025-10-19T00:00:00.000Z"
+  },
+  {
+    "id": "c7f0amsy7iupo0ck4xbio5xff",
+    "name": "Chennai Warehouse",
+    "code": "WH-CHE03",
+    "address": "Gate No. 123, MIDC, Chennai",
+    "shippingCostWeight": "1.00",
+    "isActive": true,
+    "createdAt": "2023-05-10T00:00:00.000Z",
+    "updatedAt": "2025-08-20T00:00:00.000Z"
+  },
+  {
+    "id": "cbh425vpu4ltj1ay8avx4vjo8",
+    "name": "Hyderabad Warehouse",
+    "code": "WH-HYD04",
+    "address": "Plot 35, GIDC, Hyderabad",
+    "shippingCostWeight": "0.69",
+    "isActive": false,
+    "createdAt": "2024-12-12T00:00:00.000Z",
+    "updatedAt": "2026-04-16T00:00:00.000Z"
+  },
+  {
+    "id": "cqf5xetlrhfgnztbz512aqc1g",
+    "name": "Pune Warehouse",
+    "code": "WH-PUN05",
+    "address": "Gate No. 60, Industrial Area, Pune",
+    "shippingCostWeight": "2.43",
+    "isActive": true,
+    "createdAt": "2022-02-21T00:00:00.000Z",
+    "updatedAt": "2025-09-27T00:00:00.000Z"
+  },
+  {
+    "id": "cif0932rutcvlskw1gwlhcxp5",
+    "name": "Ahmedabad Warehouse",
+    "code": "WH-AHM06",
+    "address": "Gate No. 19, Logistics Park, Ahmedabad",
+    "shippingCostWeight": "1.51",
+    "isActive": true,
+    "createdAt": "2026-03-08T00:00:00.000Z",
+    "updatedAt": "2026-03-18T00:00:00.000Z"
+  },
+  {
+    "id": "cqs5caxbjvop2oli6xbgnvhqw",
+    "name": "Kolkata Warehouse",
+    "code": "WH-KOL07",
+    "address": "Gate No. 172, Industrial Area, Kolkata",
+    "shippingCostWeight": "0.99",
+    "isActive": true,
+    "createdAt": "2025-10-24T00:00:00.000Z",
+    "updatedAt": "2026-06-07T00:00:00.000Z"
+  },
+  {
+    "id": "cw389alloftck70qd8zhmxyj8",
+    "name": "Jaipur Warehouse",
+    "code": "WH-JAI08",
+    "address": "Survey No. 132, Industrial Area, Jaipur",
+    "shippingCostWeight": "2.39",
+    "isActive": true,
+    "createdAt": "2024-03-01T00:00:00.000Z",
+    "updatedAt": "2025-01-08T00:00:00.000Z"
+  },
+  {
+    "id": "chvjn7qpwkgnjg8b37zasbvzi",
+    "name": "Surat Warehouse",
+    "code": "WH-SUR09",
+    "address": "Plot 140, GIDC, Surat",
+    "shippingCostWeight": "0.69",
+    "isActive": true,
+    "createdAt": "2025-10-27T00:00:00.000Z",
+    "updatedAt": "2026-07-13T00:00:00.000Z"
+  },
+  {
+    "id": "c6ne23tbgoti2475auc601gc3",
+    "name": "Lucknow Warehouse",
+    "code": "WH-LUC10",
+    "address": "Gate No. 138, Logistics Park, Lucknow",
+    "shippingCostWeight": "1.44",
+    "isActive": true,
+    "createdAt": "2024-07-19T00:00:00.000Z",
+    "updatedAt": "2025-08-02T00:00:00.000Z"
+  },
+  {
+    "id": "cjmkw6ccsygjcbryxfd7toy0s",
+    "name": "Nagpur Warehouse",
+    "code": "WH-NAG11",
+    "address": "Plot 84, GIDC, Nagpur",
+    "shippingCostWeight": "0.93",
+    "isActive": false,
+    "createdAt": "2023-11-24T00:00:00.000Z",
+    "updatedAt": "2024-04-28T00:00:00.000Z"
+  },
+  {
+    "id": "ctwgzrf436yh16t68o772amwv",
+    "name": "Indore Warehouse",
+    "code": "WH-IND12",
+    "address": "Survey No. 166, GIDC, Indore",
+    "shippingCostWeight": "0.86",
+    "isActive": true,
+    "createdAt": "2023-12-23T00:00:00.000Z",
+    "updatedAt": "2025-09-04T00:00:00.000Z"
+  },
+  {
+    "id": "ch9t105ncogt3neapuaxhd7s6",
+    "name": "Coimbatore Warehouse",
+    "code": "WH-COI13",
+    "address": "Gate No. 76, MIDC, Coimbatore",
+    "shippingCostWeight": "0.82",
+    "isActive": true,
+    "createdAt": "2024-10-22T00:00:00.000Z",
+    "updatedAt": "2025-12-18T00:00:00.000Z"
+  },
+  {
+    "id": "cqrghg3irb4h2mpkfhffb15k3",
+    "name": "Vadodara Warehouse",
+    "code": "WH-VAD14",
+    "address": "Survey No. 51, Logistics Park, Vadodara",
+    "shippingCostWeight": "0.95",
+    "isActive": true,
+    "createdAt": "2025-06-10T00:00:00.000Z",
+    "updatedAt": "2026-05-04T00:00:00.000Z"
+  },
+  {
+    "id": "cya6emmuqzcjdx0qe6vl40ie1",
+    "name": "Bhopal Warehouse",
+    "code": "WH-BHO15",
+    "address": "Survey No. 27, Industrial Area, Bhopal",
+    "shippingCostWeight": "1.79",
+    "isActive": true,
+    "createdAt": "2026-07-22T00:00:00.000Z",
+    "updatedAt": "2026-08-21T00:00:00.000Z"
+  },
+  {
+    "id": "c1rb67sa4kj3c1vs9izrttpa8",
+    "name": "Patna Warehouse",
+    "code": "WH-PAT16",
+    "address": "Plot 89, Logistics Park, Patna",
+    "shippingCostWeight": "2.01",
+    "isActive": true,
+    "createdAt": "2022-10-02T00:00:00.000Z",
+    "updatedAt": "2025-07-17T00:00:00.000Z"
+  },
+  {
+    "id": "csi2axqhvudrf2llhbgfw4het",
+    "name": "Ludhiana Warehouse",
+    "code": "WH-LUD17",
+    "address": "Plot 161, Logistics Park, Ludhiana",
+    "shippingCostWeight": "0.74",
+    "isActive": true,
+    "createdAt": "2024-07-24T00:00:00.000Z",
+    "updatedAt": "2026-07-30T00:00:00.000Z"
+  },
+  {
+    "id": "ctdivdhu3sxakl6m2br61ug7c",
+    "name": "Agra Warehouse",
+    "code": "WH-AGR18",
+    "address": "Survey No. 199, Logistics Park, Agra",
+    "shippingCostWeight": "1.94",
+    "isActive": true,
+    "createdAt": "2025-12-05T00:00:00.000Z",
+    "updatedAt": "2026-03-21T00:00:00.000Z"
+  },
+  {
+    "id": "cmxxo2bkdl21flexpin5pywru",
+    "name": "Nashik Warehouse",
+    "code": "WH-NAS19",
+    "address": "Survey No. 186, GIDC, Nashik",
+    "shippingCostWeight": "0.59",
+    "isActive": true,
+    "createdAt": "2022-12-02T00:00:00.000Z",
+    "updatedAt": "2024-07-16T00:00:00.000Z"
+  },
+  {
+    "id": "cp1asfhf8a148im4gz6gnfn6x",
+    "name": "Rajkot Warehouse",
+    "code": "WH-RAJ20",
+    "address": "Survey No. 174, MIDC, Rajkot",
+    "shippingCostWeight": "2.26",
+    "isActive": true,
+    "createdAt": "2025-05-30T00:00:00.000Z",
+    "updatedAt": "2025-11-15T00:00:00.000Z"
+  },
+  {
+    "id": "cu32zbu6h91ieahngxxhg6n71",
+    "name": "Visakhapatnam Warehouse",
+    "code": "WH-VIS21",
+    "address": "Gate No. 99, MIDC, Visakhapatnam",
+    "shippingCostWeight": "0.77",
+    "isActive": false,
+    "createdAt": "2023-09-15T00:00:00.000Z",
+    "updatedAt": "2025-07-17T00:00:00.000Z"
+  },
+  {
+    "id": "cq1bweskqzoo0emz49jwlz4em",
+    "name": "Kanpur Warehouse",
+    "code": "WH-KAN22",
+    "address": "Gate No. 91, GIDC, Kanpur",
+    "shippingCostWeight": "1.76",
+    "isActive": true,
+    "createdAt": "2022-07-09T00:00:00.000Z",
+    "updatedAt": "2023-06-13T00:00:00.000Z"
+  },
+  {
+    "id": "camgmha2gut44wg1d7ljho240",
+    "name": "Chandigarh Warehouse",
+    "code": "WH-CHA23",
+    "address": "Gate No. 11, GIDC, Chandigarh",
+    "shippingCostWeight": "1.10",
+    "isActive": true,
+    "createdAt": "2023-07-25T00:00:00.000Z",
+    "updatedAt": "2024-06-20T00:00:00.000Z"
+  },
+  {
+    "id": "c1g8w6qz7gzpbnr6t6736wa19",
+    "name": "Guwahati Warehouse",
+    "code": "WH-GUW24",
+    "address": "Gate No. 37, MIDC, Guwahati",
+    "shippingCostWeight": "1.76",
+    "isActive": false,
+    "createdAt": "2026-08-10T00:00:00.000Z",
+    "updatedAt": "2026-08-23T00:00:00.000Z"
+  },
+  {
+    "id": "cunvop0gk1ic6foljmtetbchi",
+    "name": "Kochi Warehouse",
+    "code": "WH-KOC25",
+    "address": "Survey No. 121, Industrial Area, Kochi",
+    "shippingCostWeight": "1.53",
+    "isActive": true,
+    "createdAt": "2024-06-21T00:00:00.000Z",
+    "updatedAt": "2024-09-21T00:00:00.000Z"
+  },
+  {
+    "id": "ckhulvrpi65hgt8f7g3rvjsdv",
+    "name": "Bhubaneswar Warehouse",
+    "code": "WH-BHU26",
+    "address": "Gate No. 30, Industrial Area, Bhubaneswar",
+    "shippingCostWeight": "1.63",
+    "isActive": false,
+    "createdAt": "2025-02-03T00:00:00.000Z",
+    "updatedAt": "2026-06-02T00:00:00.000Z"
+  },
+  {
+    "id": "czst82ippyyjypaknhy97w4rv",
+    "name": "Ranchi Warehouse",
+    "code": "WH-RAN27",
+    "address": "Plot 16, Industrial Area, Ranchi",
+    "shippingCostWeight": "1.00",
+    "isActive": true,
+    "createdAt": "2025-01-06T00:00:00.000Z",
+    "updatedAt": "2025-06-29T00:00:00.000Z"
+  },
+  {
+    "id": "csjf65dx6guls7vbby3ug8nk2",
+    "name": "Raipur Warehouse",
+    "code": "WH-RAI28",
+    "address": "Plot 38, GIDC, Raipur",
+    "shippingCostWeight": "2.37",
+    "isActive": true,
+    "createdAt": "2024-12-20T00:00:00.000Z",
+    "updatedAt": "2026-03-03T00:00:00.000Z"
+  },
+  {
+    "id": "cf2neyx3d9b82mo0j36b16ufs",
+    "name": "Dehradun Warehouse",
+    "code": "WH-DEH29",
+    "address": "Plot 82, MIDC, Dehradun",
+    "shippingCostWeight": "1.41",
+    "isActive": true,
+    "createdAt": "2025-07-05T00:00:00.000Z",
+    "updatedAt": "2026-02-19T00:00:00.000Z"
+  },
+  {
+    "id": "c152oxb2zjrj2p271nm86gn21",
+    "name": "Mumbai Warehouse - Zone 1",
+    "code": "WH-MUM130",
+    "address": "Survey No. 176, Logistics Park, Mumbai",
+    "shippingCostWeight": "0.55",
+    "isActive": true,
+    "createdAt": "2024-07-13T00:00:00.000Z",
+    "updatedAt": "2025-11-15T00:00:00.000Z"
+  },
+  {
+    "id": "cx68q29lij2ft7hwt8sr61f2o",
+    "name": "Delhi NCR Warehouse - Zone 1",
+    "code": "WH-DEL131",
+    "address": "Gate No. 127, GIDC, Delhi NCR",
+    "shippingCostWeight": "1.33",
+    "isActive": true,
+    "createdAt": "2023-07-16T00:00:00.000Z",
+    "updatedAt": "2023-12-05T00:00:00.000Z"
+  },
+  {
+    "id": "caxhmozhdo43651b1472pc90j",
+    "name": "Bengaluru Warehouse - Zone 1",
+    "code": "WH-BEN132",
+    "address": "Plot 139, GIDC, Bengaluru",
+    "shippingCostWeight": "0.57",
+    "isActive": true,
+    "createdAt": "2023-07-20T00:00:00.000Z",
+    "updatedAt": "2024-09-14T00:00:00.000Z"
+  },
+  {
+    "id": "clzz6ujwb0lzevgbj4ns29jy2",
+    "name": "Chennai Warehouse - Zone 1",
+    "code": "WH-CHE133",
+    "address": "Gate No. 89, Logistics Park, Chennai",
+    "shippingCostWeight": "1.45",
+    "isActive": true,
+    "createdAt": "2025-04-21T00:00:00.000Z",
+    "updatedAt": "2025-11-05T00:00:00.000Z"
+  },
+  {
+    "id": "crw4ixhfrxx8ftrj7fjbxxi7w",
+    "name": "Hyderabad Warehouse - Zone 1",
+    "code": "WH-HYD134",
+    "address": "Plot 52, Industrial Area, Hyderabad",
+    "shippingCostWeight": "2.21",
+    "isActive": true,
+    "createdAt": "2023-05-29T00:00:00.000Z",
+    "updatedAt": "2023-10-20T00:00:00.000Z"
+  },
+  {
+    "id": "cxkykmn5v555b2ijt4hvmt0bb",
+    "name": "Pune Warehouse - Zone 1",
+    "code": "WH-PUN135",
+    "address": "Survey No. 41, Logistics Park, Pune",
+    "shippingCostWeight": "1.85",
+    "isActive": true,
+    "createdAt": "2022-10-23T00:00:00.000Z",
+    "updatedAt": "2023-07-16T00:00:00.000Z"
+  },
+  {
+    "id": "c3spxf5sbr89pj7kaiqycm0mg",
+    "name": "Ahmedabad Warehouse - Zone 1",
+    "code": "WH-AHM136",
+    "address": "Gate No. 112, Industrial Area, Ahmedabad",
+    "shippingCostWeight": "1.89",
+    "isActive": true,
+    "createdAt": "2024-12-11T00:00:00.000Z",
+    "updatedAt": "2025-05-18T00:00:00.000Z"
+  },
+  {
+    "id": "cs93zrvnc5314t9r9cnu3s2ny",
+    "name": "Kolkata Warehouse - Zone 1",
+    "code": "WH-KOL137",
+    "address": "Survey No. 154, MIDC, Kolkata",
+    "shippingCostWeight": "0.85",
+    "isActive": true,
+    "createdAt": "2026-07-22T00:00:00.000Z",
+    "updatedAt": "2026-09-01T00:00:00.000Z"
+  },
+  {
+    "id": "cq24y0biyp9yfhpu2yobrpvex",
+    "name": "Jaipur Warehouse - Zone 1",
+    "code": "WH-JAI138",
+    "address": "Plot 15, Industrial Area, Jaipur",
+    "shippingCostWeight": "0.76",
+    "isActive": true,
+    "createdAt": "2024-03-06T00:00:00.000Z",
+    "updatedAt": "2025-01-10T00:00:00.000Z"
+  },
+  {
+    "id": "c715skozcv1tp7bibkry4kztn",
+    "name": "Surat Warehouse - Zone 1",
+    "code": "WH-SUR139",
+    "address": "Gate No. 137, MIDC, Surat",
+    "shippingCostWeight": "1.70",
+    "isActive": false,
+    "createdAt": "2026-05-11T00:00:00.000Z",
+    "updatedAt": "2026-07-29T00:00:00.000Z"
+  },
+  {
+    "id": "cjpd6a9m8a6yfleofcfgqx2sj",
+    "name": "Lucknow Warehouse - Zone 1",
+    "code": "WH-LUC140",
+    "address": "Gate No. 145, GIDC, Lucknow",
+    "shippingCostWeight": "0.79",
+    "isActive": true,
+    "createdAt": "2023-04-08T00:00:00.000Z",
+    "updatedAt": "2025-12-16T00:00:00.000Z"
+  },
+  {
+    "id": "cpknj4cnvrlrclp1poxjthwtx",
+    "name": "Nagpur Warehouse - Zone 1",
+    "code": "WH-NAG141",
+    "address": "Gate No. 60, MIDC, Nagpur",
+    "shippingCostWeight": "2.41",
+    "isActive": true,
+    "createdAt": "2024-01-10T00:00:00.000Z",
+    "updatedAt": "2024-03-26T00:00:00.000Z"
+  },
+  {
+    "id": "cq782kehyzca9mbqd3tw7eh2v",
+    "name": "Indore Warehouse - Zone 1",
+    "code": "WH-IND142",
+    "address": "Survey No. 1, Industrial Area, Indore",
+    "shippingCostWeight": "1.95",
+    "isActive": true,
+    "createdAt": "2024-01-21T00:00:00.000Z",
+    "updatedAt": "2026-01-28T00:00:00.000Z"
+  },
+  {
+    "id": "cp97s53h2j6fifk2gos61eiud",
+    "name": "Coimbatore Warehouse - Zone 1",
+    "code": "WH-COI143",
+    "address": "Plot 92, GIDC, Coimbatore",
+    "shippingCostWeight": "1.22",
+    "isActive": true,
+    "createdAt": "2024-07-22T00:00:00.000Z",
+    "updatedAt": "2024-12-03T00:00:00.000Z"
+  },
+  {
+    "id": "c8v1gnuna5ex9kjlt9fi6jyza",
+    "name": "Vadodara Warehouse - Zone 1",
+    "code": "WH-VAD144",
+    "address": "Plot 155, Logistics Park, Vadodara",
+    "shippingCostWeight": "1.43",
+    "isActive": true,
+    "createdAt": "2024-10-22T00:00:00.000Z",
+    "updatedAt": "2026-06-11T00:00:00.000Z"
+  },
+  {
+    "id": "cdlbsqkhcbe9bzqvk93op7f5w",
+    "name": "Bhopal Warehouse - Zone 1",
+    "code": "WH-BHO145",
+    "address": "Gate No. 52, MIDC, Bhopal",
+    "shippingCostWeight": "1.74",
+    "isActive": true,
+    "createdAt": "2024-12-15T00:00:00.000Z",
+    "updatedAt": "2025-10-13T00:00:00.000Z"
+  },
+  {
+    "id": "czbcina4ly22fcp9af7er7dvb",
+    "name": "Patna Warehouse - Zone 1",
+    "code": "WH-PAT146",
+    "address": "Survey No. 1, Industrial Area, Patna",
+    "shippingCostWeight": "2.01",
+    "isActive": true,
+    "createdAt": "2023-05-15T00:00:00.000Z",
+    "updatedAt": "2024-08-10T00:00:00.000Z"
+  },
+  {
+    "id": "cvfdskxsi7a2k6vqh448v76xm",
+    "name": "Ludhiana Warehouse - Zone 1",
+    "code": "WH-LUD147",
+    "address": "Gate No. 122, Industrial Area, Ludhiana",
+    "shippingCostWeight": "1.76",
+    "isActive": true,
+    "createdAt": "2022-08-25T00:00:00.000Z",
+    "updatedAt": "2023-11-29T00:00:00.000Z"
+  },
+  {
+    "id": "c61hmdmfk2e771ikqw7ad3a6g",
+    "name": "Agra Warehouse - Zone 1",
+    "code": "WH-AGR148",
+    "address": "Gate No. 121, Industrial Area, Agra",
+    "shippingCostWeight": "1.71",
+    "isActive": true,
+    "createdAt": "2024-10-07T00:00:00.000Z",
+    "updatedAt": "2024-11-18T00:00:00.000Z"
+  },
+  {
+    "id": "cgcetd9oh71i33bgwme5z4cq9",
+    "name": "Nashik Warehouse - Zone 1",
+    "code": "WH-NAS149",
+    "address": "Plot 143, MIDC, Nashik",
+    "shippingCostWeight": "1.07",
+    "isActive": true,
+    "createdAt": "2026-08-14T00:00:00.000Z",
+    "updatedAt": "2026-08-27T00:00:00.000Z"
+  }
+]

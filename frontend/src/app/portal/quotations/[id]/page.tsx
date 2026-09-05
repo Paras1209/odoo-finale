@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
@@ -32,6 +32,13 @@ interface Quotation {
   status: string;
   totalAmount: number;
   overallDiscountPct: number;
+  // Counter offer fields
+  counterOfferStatus: string | null;
+  counteredDiscountPct: number | null;
+  counteredTotalAmount: number | null;
+  unitPriceTotal: number | null;
+  counterOfferAt: string | null;
+  counterOfferRespondedAt: string | null;
   validUntil: string | null;
   notes: string | null;
   lastActivityAt: string;
@@ -87,6 +94,29 @@ const statusConfig: Record<string, { label: string; color: string; description: 
   },
 };
 
+const counterOfferStatusConfig: Record<string, { label: string; color: string; description: string }> = {
+  PENDING: {
+    label: 'Awaiting Response',
+    color: 'bg-yellow-100 text-yellow-800',
+    description: 'Your counter offer is being reviewed by the sales rep.'
+  },
+  ACCEPTED: {
+    label: 'Accepted',
+    color: 'bg-green-100 text-green-800',
+    description: 'Your counter offer was accepted!'
+  },
+  REJECTED: {
+    label: 'Rejected',
+    color: 'bg-red-100 text-red-800',
+    description: 'Your counter offer was rejected. The original terms apply.'
+  },
+  COUNTERED: {
+    label: 'Counter Offer Received',
+    color: 'bg-purple-100 text-purple-800',
+    description: 'The sales rep has made a new offer. Review and respond below.'
+  },
+};
+
 export default function PortalQuotationDetailPage() {
   const { id } = useParams() as { id: string };
   const [quotation, setQuotation] = useState<Quotation | null>(null);
@@ -96,6 +126,7 @@ export default function PortalQuotationDetailPage() {
 
   // Negotiation state
   const [counterDiscount, setCounterDiscount] = useState<number>(0);
+  const [counterComment, setCounterComment] = useState('');
   const [counterSubmitting, setCounterSubmitting] = useState(false);
   const [acceptSubmitting, setAcceptSubmitting] = useState(false);
 
@@ -112,26 +143,32 @@ export default function PortalQuotationDetailPage() {
     fetchComments();
   }, [id]);
 
-  const fetchQuotation = async () => {
+  const fetchQuotation = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     const res = await api.get<Quotation>(`/portal/quotations/${id}`);
     if (res.success && res.data) {
       setQuotation(res.data);
-      setCounterDiscount(res.data.overallDiscountPct || 0);
+      // Set counter discount based on current state
+      if (res.data.counterOfferStatus === 'COUNTERED' && res.data.counteredDiscountPct !== null) {
+        // If sales rep countered, show their offer as the starting point
+        setCounterDiscount(res.data.counteredDiscountPct);
+      } else {
+        setCounterDiscount(res.data.overallDiscountPct || 0);
+      }
     } else {
       setError(res.error?.message || 'Failed to load quotation');
     }
     setLoading(false);
-  };
+  }, [id]);
 
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     const res = await api.get<Comment[]>(`/portal/quotations/${id}/comments`);
     if (res.success && res.data) {
       setComments(res.data);
     }
-  };
+  }, [id]);
 
   const handleAccept = async () => {
     setAcceptSubmitting(true);
@@ -152,11 +189,14 @@ export default function PortalQuotationDetailPage() {
     setMessage(null);
     
     const res = await api.post<any>(`/portal/quotations/${id}/counter`, {
-      discountPct: counterDiscount
+      discountPct: counterDiscount,
+      comment: counterComment || undefined,
     });
     if (res.success) {
       setMessage({ type: 'success', text: 'Counter offer submitted! Your sales rep will review it.' });
-      fetchQuotation();
+      setCounterComment('');
+      await fetchQuotation();
+      await fetchComments();
     } else {
       setMessage({ type: 'error', text: res.error?.message || 'Error submitting counter offer' });
     }
@@ -197,6 +237,10 @@ export default function PortalQuotationDetailPage() {
       hour: 'numeric',
       minute: '2-digit',
     });
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
   };
 
   if (loading) {
@@ -244,8 +288,18 @@ export default function PortalQuotationDetailPage() {
   if (!quotation) return null;
 
   const status = statusConfig[quotation.status] || statusConfig.DRAFT;
-  const canNegotiate = quotation.status === 'APPROVED';
-  const finalTotal = quotation.totalAmount * (1 - quotation.overallDiscountPct / 100);
+  const counterOfferStatusInfo = quotation.counterOfferStatus 
+    ? counterOfferStatusConfig[quotation.counterOfferStatus] 
+    : null;
+  
+  // Can negotiate if approved and no pending counter offer, or if sales rep has countered back
+  const canNegotiate = quotation.status === 'APPROVED' && 
+    (quotation.counterOfferStatus === null || quotation.counterOfferStatus === 'COUNTERED');
+  const hasPendingCounter = quotation.counterOfferStatus === 'PENDING';
+  
+  // Calculate totals
+  const unitPriceTotal = quotation.unitPriceTotal ?? quotation.lines.reduce((sum, line) => sum + (line.unitPrice * line.quantity), 0);
+  const finalTotal = quotation.totalAmount;
 
   return (
     <div>
@@ -275,6 +329,39 @@ export default function PortalQuotationDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Counter Offer Status Banner */}
+      {counterOfferStatusInfo && (
+        <div className={`mb-6 p-4 rounded-lg border ${
+          quotation.counterOfferStatus === 'PENDING' ? 'bg-yellow-50 border-yellow-200' :
+          quotation.counterOfferStatus === 'ACCEPTED' ? 'bg-green-50 border-green-200' :
+          quotation.counterOfferStatus === 'REJECTED' ? 'bg-red-50 border-red-200' :
+          'bg-purple-50 border-purple-200'
+        }`}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className={`px-2 py-1 rounded text-xs font-semibold ${counterOfferStatusInfo.color}`}>
+              {counterOfferStatusInfo.label}
+            </span>
+            {quotation.counteredDiscountPct !== null && (
+              <span className="text-sm font-medium">
+                {quotation.counteredDiscountPct}% discount
+                {quotation.counteredTotalAmount !== null && (
+                  <span className="text-gray-600"> ({formatCurrency(quotation.counteredTotalAmount)})</span>
+                )}
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-gray-600">{counterOfferStatusInfo.description}</p>
+          {quotation.counterOfferAt && (
+            <p className="text-xs text-gray-500 mt-1">
+              Submitted: {formatDateTime(quotation.counterOfferAt)}
+              {quotation.counterOfferRespondedAt && (
+                <span> | Responded: {formatDateTime(quotation.counterOfferRespondedAt)}</span>
+              )}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Message Banner */}
       {message && (
@@ -314,7 +401,7 @@ export default function PortalQuotationDetailPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-right text-gray-600">{line.quantity}</td>
-                    <td className="px-6 py-4 text-right text-gray-600">${line.unitPrice.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-right text-gray-600">{formatCurrency(line.unitPrice)}</td>
                     <td className="px-6 py-4 text-right">
                       {line.discountPct > 0 ? (
                         <span className="text-green-600">-{line.discountPct}%</span>
@@ -323,7 +410,7 @@ export default function PortalQuotationDetailPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-right font-semibold text-gray-900">
-                      ${line.lineTotal.toFixed(2)}
+                      {formatCurrency(line.lineTotal)}
                     </td>
                   </tr>
                 ))}
@@ -332,21 +419,27 @@ export default function PortalQuotationDetailPage() {
           </div>
           <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
             <div className="flex justify-end space-y-1">
-              <div className="w-64">
+              <div className="w-72">
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>Subtotal</span>
-                  <span>${quotation.totalAmount.toFixed(2)}</span>
+                  <span>Unit Price Total (before discounts)</span>
+                  <span>{formatCurrency(unitPriceTotal)}</span>
                 </div>
                 {quotation.overallDiscountPct > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
-                    <span>Discount ({quotation.overallDiscountPct}%)</span>
-                    <span>-${(quotation.totalAmount * quotation.overallDiscountPct / 100).toFixed(2)}</span>
+                    <span>Applied Discount ({quotation.overallDiscountPct}%)</span>
+                    <span>-{formatCurrency(unitPriceTotal * quotation.overallDiscountPct / 100)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-lg font-bold text-gray-900 mt-2 pt-2 border-t border-gray-300">
-                  <span>Total</span>
-                  <span>${finalTotal.toFixed(2)}</span>
+                  <span>Quote Total</span>
+                  <span>{formatCurrency(finalTotal)}</span>
                 </div>
+                {quotation.counterOfferStatus === 'COUNTERED' && quotation.counteredTotalAmount !== null && (
+                  <div className="flex justify-between text-sm text-purple-700 mt-1">
+                    <span>Sales Rep&apos;s Offer</span>
+                    <span>{formatCurrency(quotation.counteredTotalAmount)} ({quotation.counteredDiscountPct}% off)</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -359,8 +452,30 @@ export default function PortalQuotationDetailPage() {
               <h2 className="text-lg font-semibold text-gray-900">Actions</h2>
             </div>
             <div className="p-6">
-              {canNegotiate ? (
+              {hasPendingCounter ? (
+                <div className="text-center py-4">
+                  <div className="text-yellow-500 text-3xl mb-2">&#9202;</div>
+                  <p className="text-gray-600 font-medium">Counter Offer Pending</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    You requested {quotation.counteredDiscountPct}% discount.
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Waiting for sales rep to respond.
+                  </p>
+                </div>
+              ) : canNegotiate ? (
                 <div className="space-y-4">
+                  {quotation.counterOfferStatus === 'COUNTERED' && (
+                    <div className="p-3 bg-purple-50 rounded-lg border border-purple-200 mb-4">
+                      <p className="text-sm text-purple-700 font-medium">
+                        Sales rep offered: {quotation.counteredDiscountPct}% discount
+                      </p>
+                      <p className="text-xs text-purple-600 mt-1">
+                        Total: {formatCurrency(quotation.counteredTotalAmount ?? 0)}
+                      </p>
+                    </div>
+                  )}
+                  
                   <p className="text-sm text-gray-600">
                     Happy with this quote? Accept it to proceed with the order.
                   </p>
@@ -382,7 +497,7 @@ export default function PortalQuotationDetailPage() {
                   </div>
                   
                   <p className="text-sm text-gray-600">
-                    Propose a different overall discount:
+                    Propose a different discount (% off unit price total):
                   </p>
                   <div className="flex items-center gap-2">
                     <input 
@@ -399,9 +514,21 @@ export default function PortalQuotationDetailPage() {
                   </div>
                   {counterDiscount > 0 && (
                     <p className="text-sm text-gray-500">
-                      New total: ${(quotation.totalAmount * (1 - counterDiscount / 100)).toFixed(2)}
+                      Your proposed total: {formatCurrency(unitPriceTotal * (1 - counterDiscount / 100))}
                     </p>
                   )}
+                  
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Message (optional)</label>
+                    <textarea
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      rows={2}
+                      placeholder="Explain your counter offer..."
+                      value={counterComment}
+                      onChange={(e) => setCounterComment(e.target.value)}
+                    />
+                  </div>
+                  
                   <button 
                     className="w-full py-2 bg-white border-2 border-blue-600 text-blue-600 rounded-lg font-semibold hover:bg-blue-50 disabled:opacity-50 transition"
                     onClick={handleCounter}
@@ -418,7 +545,7 @@ export default function PortalQuotationDetailPage() {
                       href="/portal/orders"
                       className="inline-block mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
                     >
-                      View Orders →
+                      View Orders &rarr;
                     </Link>
                   )}
                 </div>
@@ -436,10 +563,10 @@ export default function PortalQuotationDetailPage() {
         </div>
       </div>
 
-      {/* Comments Section */}
+      {/* Negotiation Thread */}
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Discussion</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Negotiation Thread</h2>
           <p className="text-sm text-gray-500">Communicate with your sales rep about this quotation</p>
         </div>
         
@@ -447,8 +574,8 @@ export default function PortalQuotationDetailPage() {
         <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
           {comments.length === 0 ? (
             <div className="px-6 py-8 text-center">
-              <span className="text-3xl mb-2 block">💬</span>
-              <p className="text-gray-500">No comments yet</p>
+              <span className="text-3xl mb-2 block">&#128172;</span>
+              <p className="text-gray-500">No messages yet</p>
               <p className="text-sm text-gray-400">Start a discussion with your sales rep</p>
             </div>
           ) : (
@@ -466,14 +593,19 @@ export default function PortalQuotationDetailPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-900">{comment.authorName}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        comment.authorType === 'CUSTOMER' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
+                      }`}>
+                        {comment.authorType === 'CUSTOMER' ? 'You' : 'Sales Rep'}
+                      </span>
                       <span className="text-xs text-gray-400">{formatDateTime(comment.createdAt)}</span>
-                      {comment.productName && (
-                        <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
-                          Re: {comment.productName}
-                        </span>
-                      )}
                     </div>
-                    <p className="text-gray-700 mt-1">{comment.commentText}</p>
+                    {comment.productName && (
+                      <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded mt-1 inline-block">
+                        Re: {comment.productName}
+                      </span>
+                    )}
+                    <p className="text-gray-700 mt-1 whitespace-pre-wrap">{comment.commentText}</p>
                   </div>
                 </div>
               </div>
@@ -528,7 +660,7 @@ export default function PortalQuotationDetailPage() {
           href="/portal/quotations"
           className="text-emerald-600 hover:text-emerald-700 font-medium"
         >
-          ← Back to Quotations
+          &larr; Back to Quotations
         </Link>
       </div>
     </div>

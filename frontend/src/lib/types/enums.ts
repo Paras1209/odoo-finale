@@ -151,3 +151,13 @@ export enum ActorType {
   INTERNAL = 'INTERNAL',
   CUSTOMER = 'CUSTOMER',
 }
+
+/**
+ * Counter offer status - tracks negotiation state
+ */
+export enum CounterOfferStatus {
+  PENDING = 'PENDING',     // Customer submitted counter offer, awaiting sales rep response
+  ACCEPTED = 'ACCEPTED',   // Sales rep accepted the counter offer
+  REJECTED = 'REJECTED',   // Sales rep rejected the counter offer
+  COUNTERED = 'COUNTERED', // Sales rep made a counter-counter offer
+}

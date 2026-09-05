@@ -194,7 +194,7 @@ class AuditLogger {
     actorId: string,
     actorType: ActorType,
     quotationId: string,
-    action: 'CONFIRM' | 'APPROVE' | 'REJECT' | 'RETURN' | 'CANCEL' | 'COUNTER_DISCOUNT',
+    action: 'CONFIRM' | 'APPROVE' | 'REJECT' | 'RETURN' | 'CANCEL' | 'COUNTER_DISCOUNT' | 'COUNTER_OFFER' | 'COUNTER_ACCEPT' | 'COUNTER_REJECT' | 'COUNTER_COUNTER',
     beforeStatus: string,
     afterStatus: string,
     reason?: string

@@ -5,7 +5,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
-import { ActorType } from '@/lib/types';
+import { ActorType, QuotationStatus } from '@/lib/types';
+
+// Statuses that customers are allowed to see
+// Excludes DRAFT, PENDING_MANAGER_APPROVAL, PENDING_FINANCE_APPROVAL (internal workflow states)
+const CUSTOMER_VISIBLE_STATUSES: QuotationStatus[] = [
+  QuotationStatus.APPROVED,
+  QuotationStatus.CONFIRMED,
+  QuotationStatus.FULFILLING,
+  QuotationStatus.BILLED,
+  QuotationStatus.REJECTED, // Customer can see if their quotation was rejected
+  QuotationStatus.CANCELLED, // Customer can see if their quotation was cancelled
+];
 
 // GET /api/portal/quotations - List customer's quotations
 export async function GET(request: NextRequest) {
@@ -21,6 +32,8 @@ export async function GET(request: NextRequest) {
     const quotations = await prisma.quotation.findMany({
       where: {
         customerId: session.user.id,
+        // Only show quotations that have been approved or are in a customer-visible state
+        status: { in: CUSTOMER_VISIBLE_STATUSES },
       },
       include: {
         lines: {
@@ -39,6 +52,12 @@ export async function GET(request: NextRequest) {
         quotationNumber: q.quotationNumber,
         status: q.status,
         totalAmount: q.totalAmount.toNumber(),
+        overallDiscountPct: q.overallDiscountPct.toNumber(),
+        // Counter offer info
+        counterOfferStatus: q.counterOfferStatus,
+        counteredDiscountPct: q.counteredDiscountPct?.toNumber() ?? null,
+        counteredTotalAmount: q.counteredTotalAmount?.toNumber() ?? null,
+        unitPriceTotal: q.unitPriceTotal?.toNumber() ?? null,
         notes: q.notes,
         validUntil: q.validUntil?.toISOString() ?? null,
         lastActivityAt: q.lastActivityAt.toISOString(),

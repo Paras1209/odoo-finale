@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
-import { ActorType } from '@/lib/types';
+import { ActorType, QuotationStatus } from '@/lib/types';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
+
+// Statuses that customers are allowed to see
+// Excludes DRAFT, PENDING_MANAGER_APPROVAL, PENDING_FINANCE_APPROVAL (internal workflow states)
+const CUSTOMER_VISIBLE_STATUSES: QuotationStatus[] = [
+  QuotationStatus.APPROVED,
+  QuotationStatus.CONFIRMED,
+  QuotationStatus.FULFILLING,
+  QuotationStatus.BILLED,
+  QuotationStatus.REJECTED,
+  QuotationStatus.CANCELLED,
+];
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
@@ -37,6 +48,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Check if the quotation status is visible to customers
+    if (!CUSTOMER_VISIBLE_STATUSES.includes(quotation.status as QuotationStatus)) {
+      return NextResponse.json(
+        { success: false, error: { code: 'NOT_FOUND', message: 'Quotation not found' } },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -45,6 +64,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         status: quotation.status,
         totalAmount: quotation.totalAmount.toNumber(),
         overallDiscountPct: quotation.overallDiscountPct?.toNumber() ?? 0,
+        // Counter offer info
+        counterOfferStatus: quotation.counterOfferStatus,
+        counteredDiscountPct: quotation.counteredDiscountPct?.toNumber() ?? null,
+        counteredTotalAmount: quotation.counteredTotalAmount?.toNumber() ?? null,
+        unitPriceTotal: quotation.unitPriceTotal?.toNumber() ?? null,
+        counterOfferAt: quotation.counterOfferAt?.toISOString() ?? null,
+        counterOfferRespondedAt: quotation.counterOfferRespondedAt?.toISOString() ?? null,
         notes: quotation.notes,
         validUntil: quotation.validUntil?.toISOString() ?? null,
         lastActivityAt: quotation.lastActivityAt.toISOString(),

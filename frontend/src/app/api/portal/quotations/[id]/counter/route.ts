@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
-import { ActorType, QuotationStatus } from '@/lib/types';
-import { evaluateQuotation, dealEvents, auditLogger } from '@/lib/services';
+import { ActorType, CounterOfferStatus } from '@/lib/types';
+import { dealEvents, auditLogger } from '@/lib/services';
+import { Decimal } from '@prisma/client/runtime/library';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -36,58 +37,51 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    if (quotation.status !== 'APPROVED') {
+    // Can only counter APPROVED quotations or quotations where sales rep has countered back
+    const canCounter = quotation.status === 'APPROVED' && 
+      (quotation.counterOfferStatus === null || quotation.counterOfferStatus === 'COUNTERED');
+    
+    if (!canCounter) {
       return NextResponse.json(
         { success: false, error: { code: 'INVALID_STATE', message: 'Can only counter APPROVED quotations' } },
         { status: 400 }
       );
     }
 
-    const previousStatus = quotation.status;
     const requestedDiscountPct = body.discountPct || 0;
+    const comment = body.comment || '';
 
-    // First, update the overall discount on the quotation
-    await prisma.quotation.update({
+    // Calculate unit price total (sum of unitPrice * quantity for all lines, before any discounts)
+    const unitPriceTotal = quotation.lines.reduce((sum, line) => {
+      const lineUnitTotal = line.unitPrice.toNumber() * line.quantity;
+      return sum + lineUnitTotal;
+    }, 0);
+
+    // Calculate the countered total amount based on the requested discount from unit price total
+    const discountAmount = unitPriceTotal * (requestedDiscountPct / 100);
+    const counteredTotalAmount = unitPriceTotal - discountAmount;
+
+    // Update quotation with counter offer data (stored separately, doesn't modify original values)
+    const updated = await prisma.quotation.update({
       where: { id },
       data: {
-        overallDiscountPct: requestedDiscountPct,
+        counterOfferStatus: CounterOfferStatus.PENDING,
+        counteredDiscountPct: new Decimal(requestedDiscountPct),
+        counteredTotalAmount: new Decimal(counteredTotalAmount),
+        unitPriceTotal: new Decimal(unitPriceTotal),
+        counterOfferAt: new Date(),
+        counterOfferRespondedAt: null, // Reset response timestamp
         lastActivityAt: new Date(),
       }
     });
 
-    // Re-evaluate risk score with the new discount
-    // Note: The risk score engine evaluates line-level discounts, not overall discount
-    // For a proper implementation, we might need to apply the overall discount to lines
-    // For now, we'll re-evaluate and route based on the result
-    const riskResult = await evaluateQuotation(id);
-
-    // Determine new status based on risk evaluation
-    let newStatus: QuotationStatus;
-    if (riskResult.blendedScore > 0 || requestedDiscountPct > 0) {
-      // Counter offer needs review - either has violations or customer is asking for extra discount
-      newStatus = QuotationStatus.DRAFT;
-      
-      // If the counter creates new violations that exceed thresholds, require approval
-      if (riskResult.requiresManager) {
-        newStatus = QuotationStatus.PENDING_MANAGER_APPROVAL;
-        await prisma.approval.create({
-          data: {
-            quotationId: id,
-            level: 'MANAGER',
-            status: 'PENDING',
-          },
-        });
-      }
-    } else {
-      // No violations and no extra discount requested - back to draft for rep to review
-      newStatus = QuotationStatus.DRAFT;
-    }
-
-    const updated = await prisma.quotation.update({
-      where: { id },
+    // Create a comment record for the negotiation thread
+    await prisma.quotationComment.create({
       data: {
-        status: newStatus,
-        blendedRiskScore: riskResult.blendedScore,
+        quotationId: id,
+        authorType: ActorType.CUSTOMER,
+        authorId: session.user.id,
+        commentText: comment || `Counter offer: Requesting ${requestedDiscountPct}% discount (${formatCurrency(counteredTotalAmount)} total from ${formatCurrency(unitPriceTotal)} unit price total)`,
       }
     });
 
@@ -97,18 +91,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       quotationLineId: '', // Overall discount, not line-specific
       customerId: session.user.id,
       requestedDiscountPct,
-      previousDiscountPct: quotation.overallDiscountPct?.toNumber() ?? 0,
-      comment: `Customer requested ${requestedDiscountPct}% overall discount`,
+      previousDiscountPct: quotation.counteredDiscountPct?.toNumber() ?? 0,
+      unitPriceTotal,
+      counteredTotalAmount,
+      comment,
       requestedAt: new Date(),
-    });
-
-    // Emit status change event
-    dealEvents.emit('quotation.statusChanged', {
-      quotationId: id,
-      previousStatus,
-      newStatus,
-      changedBy: { id: session.user.id, type: ActorType.CUSTOMER },
-      changedAt: new Date(),
     });
 
     // Audit log
@@ -116,10 +103,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       session.user.id,
       ActorType.CUSTOMER,
       id,
-      'COUNTER_DISCOUNT',
-      previousStatus,
-      newStatus,
-      `Customer requested ${requestedDiscountPct}% overall discount`
+      'COUNTER_OFFER',
+      quotation.status,
+      quotation.status, // Status remains the same, only counter offer fields change
+      `Customer counter offer: ${requestedDiscountPct}% discount requested (${formatCurrency(counteredTotalAmount)} from ${formatCurrency(unitPriceTotal)} unit price total)`
     );
 
     return NextResponse.json({
@@ -128,14 +115,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         id: updated.id,
         quotationNumber: updated.quotationNumber,
         status: updated.status,
-        previousStatus,
-        blendedRiskScore: riskResult.blendedScore,
-        requestedDiscountPct,
-        requiresApproval: newStatus === QuotationStatus.PENDING_MANAGER_APPROVAL,
+        counterOfferStatus: updated.counterOfferStatus,
+        counteredDiscountPct: requestedDiscountPct,
+        counteredTotalAmount,
+        unitPriceTotal,
+        originalTotalAmount: quotation.totalAmount.toNumber(),
+        originalDiscountPct: quotation.overallDiscountPct.toNumber(),
       },
-      message: newStatus === QuotationStatus.PENDING_MANAGER_APPROVAL 
-        ? 'Counter offer submitted - requires manager approval due to discount thresholds'
-        : 'Counter offer submitted to sales rep for review',
+      message: 'Counter offer submitted. Sales rep will review and respond.',
     });
   } catch (error) {
     console.error('[Portal/Quotations/Counter] Error:', error);
@@ -144,4 +131,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
+}
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 }

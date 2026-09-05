@@ -7,9 +7,9 @@
 // credit notes, and status management
 // ===========================================
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 
 interface InvoiceLine {
@@ -54,8 +54,8 @@ interface Invoice {
   creditNotes: CreditNote[];
 }
 
-export default function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
+export default function InvoiceDetailPage() {
+  const params = useParams<{ id: string }>();
   const router = useRouter();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,13 +74,13 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   useEffect(() => {
     fetchInvoice();
-  }, [resolvedParams.id]);
+  }, [params.id]);
 
   const fetchInvoice = async () => {
     setLoading(true);
     setError(null);
     
-    const res = await api.get<any>(`/billing/invoices/${resolvedParams.id}`);
+    const res = await api.get<any>(`/billing/invoices/${params.id}`);
     if (res.success && res.data) {
       const inv = res.data.data || res.data;
       setInvoice(inv);
@@ -93,7 +93,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   const handleSendInvoice = async () => {
     setActionLoading(true);
-    const res = await api.post<any>(`/billing/invoices/${resolvedParams.id}?action=send`);
+    const res = await api.post<any>(`/billing/invoices/${params.id}?action=send`);
     setActionLoading(false);
     
     if (res.success) {
@@ -105,7 +105,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   const handleRecordPayment = async () => {
     setActionLoading(true);
-    const res = await api.post<any>(`/billing/invoices/${resolvedParams.id}?action=pay`, {
+    const res = await api.post<any>(`/billing/invoices/${params.id}?action=pay`, {
       amount: paymentAmount,
       paidAt: new Date(paymentDate).toISOString(),
     });
@@ -130,7 +130,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     }
 
     setActionLoading(true);
-    const res = await api.post<any>(`/billing/invoices/${resolvedParams.id}/credit-notes`, {
+    const res = await api.post<any>(`/billing/invoices/${params.id}/credit-notes`, {
       amount: creditNoteAmount,
       reason: creditNoteReason,
     });
@@ -148,7 +148,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   const handleIssueCreditNote = async (creditNoteId: string) => {
     setActionLoading(true);
-    const res = await api.post<any>(`/billing/invoices/${resolvedParams.id}/credit-notes?action=issue`, {
+    const res = await api.post<any>(`/billing/invoices/${params.id}/credit-notes?action=issue`, {
       creditNoteId,
     });
     setActionLoading(false);

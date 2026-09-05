@@ -209,6 +209,14 @@ model Quotation {
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
 
+  // Counter offer fields (stored separately from original quotation values)
+  counterOfferStatus      CounterOfferStatus? @map("counter_offer_status")
+  counteredDiscountPct    Decimal?            @map("countered_discount_pct") @db.Decimal(5, 2)
+  counteredTotalAmount    Decimal?            @map("countered_total_amount") @db.Decimal(12, 2)
+  unitPriceTotal          Decimal?            @map("unit_price_total") @db.Decimal(12, 2)  // Sum of (unitPrice * quantity) before any discounts
+  counterOfferAt          DateTime?           @map("counter_offer_at")
+  counterOfferRespondedAt DateTime?           @map("counter_offer_responded_at")
+
   // Relations
   customer   Customer        @relation(fields: [customerId], references: [id])
   rep        User            @relation("RepQuotations", fields: [repId], references: [id])
@@ -233,6 +241,13 @@ enum QuotationStatus {
   FULFILLING
   BILLED
   CANCELLED
+}
+
+enum CounterOfferStatus {
+  PENDING     // Customer submitted counter offer, awaiting sales rep response
+  ACCEPTED    // Sales rep accepted the counter offer
+  REJECTED    // Sales rep rejected the counter offer
+  COUNTERED   // Sales rep made a counter-counter offer
 }
 
 /// Individual line items on a quotation

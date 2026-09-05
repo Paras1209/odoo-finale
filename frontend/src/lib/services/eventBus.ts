@@ -177,8 +177,19 @@ export interface CustomerCounterDiscountEvent {
   customerId: string;
   requestedDiscountPct: number;
   previousDiscountPct: number;
+  unitPriceTotal?: number;
+  counteredTotalAmount?: number;
   comment?: string;
   requestedAt: Date;
+}
+
+export interface CounterResponseEvent {
+  quotationId: string;
+  action: 'accept' | 'reject' | 'counter';
+  respondedBy: { id: string; type: string };
+  counterDiscountPct?: number;
+  comment?: string;
+  respondedAt: Date;
 }
 
 export interface PortalCommentEvent {
@@ -212,6 +223,7 @@ export interface DealEventMap {
   'quotation.approved': QuotationApprovedEvent;
   'quotation.rejected': QuotationRejectedEvent;
   'quotation.statusChanged': QuotationStatusChangedEvent;
+  'quotation.counterResponse': CounterResponseEvent;
   'stock.updated': StockUpdatedEvent;
   'fulfillment.completed': FulfillmentCompletedEvent;
   'backorder.ready': BackorderReadyEvent;

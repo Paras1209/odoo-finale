@@ -217,3 +217,10 @@ export {
   type ModificationResult,
   type InvoiceSummary,
 } from './billingService';
+
+// Billing Event Handlers (Auto-registration on import)
+export {
+  registerBillingEventHandlers,
+  unregisterBillingEventHandlers,
+  areBillingHandlersRegistered,
+} from './billingEventHandlers';

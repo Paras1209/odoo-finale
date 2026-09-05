@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { ActorType, QuotationStatus } from '@/lib/types';
-import { dealEvents, auditLogger } from '@/lib/services';
+import { dealEvents, auditLogger, registerBillingEventHandlers } from '@/lib/services';
+
+// Ensure billing event handlers are registered
+registerBillingEventHandlers();
 
 interface RouteParams {
   params: Promise<{ id: string }>;
