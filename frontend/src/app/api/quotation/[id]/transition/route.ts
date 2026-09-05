@@ -61,22 +61,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     switch (action) {
       case 'CONFIRM':
         if (quotation.status === 'DRAFT') {
-          // Evaluate risk score
-          const riskResult = await evaluateQuotation(quotationId);
-          
-          if (riskResult.blendedScore === 0) {
-            newStatus = QuotationStatus.APPROVED;
-          } else if (riskResult.requiresManager) {
-            newStatus = QuotationStatus.PENDING_MANAGER_APPROVAL;
-            // Create approval record
-            await prisma.approval.create({
-              data: {
-                quotationId,
-                level: 'MANAGER',
-                status: 'PENDING',
-              },
-            });
-          }
+          // Phase 1: Skip approval logic, bypass directly to APPROVED
+          newStatus = QuotationStatus.APPROVED;
           
           await prisma.quotation.update({
             where: { id: quotationId },
@@ -262,14 +248,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           );
         }
 
-        // Re-evaluate with new discount
-        const counterResult = await evaluateQuotation(quotationId);
-        
-        if (counterResult.blendedScore > 0) {
-          newStatus = counterResult.requiresManager 
-            ? QuotationStatus.PENDING_MANAGER_APPROVAL 
-            : QuotationStatus.APPROVED;
-        }
+        // Phase 1: Skip approval logic, bypass directly to DRAFT (under review)
+        // A real system would route back to PENDING_MANAGER_APPROVAL if thresholds breached
+        newStatus = QuotationStatus.DRAFT;
         
         await prisma.quotation.update({
           where: { id: quotationId },

@@ -202,6 +202,7 @@ model Quotation {
   totalAmount       Decimal         @default(0) @map("total_amount") @db.Decimal(12, 2)
   totalMargin       Decimal         @default(0) @map("total_margin") @db.Decimal(12, 2)
   totalMarginPct    Decimal         @default(0) @map("total_margin_pct") @db.Decimal(5, 2)
+  overallDiscountPct Decimal        @default(0) @map("overall_discount_pct") @db.Decimal(5, 2)
   notes             String?
   validUntil        DateTime?       @map("valid_until")
   lastActivityAt    DateTime        @default(now()) @map("last_activity_at")
