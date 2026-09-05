@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { ActorType, QuotationStatus } from '@/lib/types';
+import { dealEvents, auditLogger } from '@/lib/services';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -21,6 +22,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const quotation = await prisma.quotation.findUnique({
       where: { id, customerId: session.user.id },
+      include: {
+        customer: true,
+        lines: { include: { product: true } },
+      },
     });
 
     if (!quotation) {
@@ -37,6 +42,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const previousStatus = quotation.status;
+
     const updated = await prisma.quotation.update({
       where: { id },
       data: {
@@ -45,10 +52,45 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     });
 
+    // Emit event for fulfillment (M3) and billing (M4) modules to handle
+    dealEvents.emit('quotation.confirmed', {
+      quotationId: id,
+      quotation: quotation as any,
+      lines: quotation.lines as any,
+      customerId: quotation.customerId,
+      confirmedBy: { id: session.user.id, type: ActorType.CUSTOMER },
+      confirmedAt: new Date(),
+    });
+
+    // Emit status change event
+    dealEvents.emit('quotation.statusChanged', {
+      quotationId: id,
+      previousStatus,
+      newStatus: QuotationStatus.CONFIRMED,
+      changedBy: { id: session.user.id, type: ActorType.CUSTOMER },
+      changedAt: new Date(),
+    });
+
+    // Audit log
+    await auditLogger.logQuotationTransition(
+      session.user.id,
+      ActorType.CUSTOMER,
+      id,
+      'CONFIRM',
+      previousStatus,
+      QuotationStatus.CONFIRMED
+    );
+
     return NextResponse.json({
       success: true,
-      data: updated,
-      message: 'Quotation confirmed',
+      data: {
+        id: updated.id,
+        quotationNumber: updated.quotationNumber,
+        status: updated.status,
+        previousStatus,
+        confirmedAt: updated.lastActivityAt.toISOString(),
+      },
+      message: 'Quotation confirmed successfully',
     });
   } catch (error) {
     console.error('[Portal/Quotations/Confirm] Error:', error);

@@ -13,6 +13,8 @@ import { auditLogger } from '@/lib/services';
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
+    console.log('[Quotation/List] Session:', JSON.stringify(session, null, 2));
+    
     if (!session?.user || session.user.actorType !== ActorType.INTERNAL) {
       return NextResponse.json(
         { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
@@ -21,12 +23,17 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const pagination = paginationSchema.parse({
-      page: searchParams.get('page'),
-      pageSize: searchParams.get('pageSize'),
-      sortBy: searchParams.get('sortBy'),
-      sortOrder: searchParams.get('sortOrder'),
-    });
+    
+    // Parse pagination with null safety
+    const paginationInput = {
+      page: searchParams.get('page') ?? undefined,
+      pageSize: searchParams.get('pageSize') ?? undefined,
+      sortBy: searchParams.get('sortBy') ?? undefined,
+      sortOrder: searchParams.get('sortOrder') ?? undefined,
+    };
+    console.log('[Quotation/List] Pagination input:', paginationInput);
+    
+    const pagination = paginationSchema.parse(paginationInput);
 
     const statusParam = searchParams.get('status');
     const customerId = searchParams.get('customerId');
@@ -83,8 +90,9 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('[Quotation/List] Error:', error);
+    console.error('[Quotation/List] Error stack:', error instanceof Error ? error.stack : 'N/A');
     return NextResponse.json(
-      { success: false, error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } },
+      { success: false, error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred', details: error instanceof Error ? error.message : String(error) } },
       { status: 500 }
     );
   }

@@ -55,8 +55,10 @@ export {
 export {
   evaluateQuotation,
   getDiscountCeiling,
+  getDiscountCeilingsForTier,
   getApprovalRequirements,
   calculateWeightedOverage,
+  validateLineDiscount,
 } from './riskScoreEngine';
 
 // Catalog Service (M1 - Dev B)

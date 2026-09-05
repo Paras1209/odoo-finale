@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
-import { ActorType, QuotationStatus } from '@/lib/types';
+import { ActorType, QuotationStatus, RiskScoreResult } from '@/lib/types';
 import { transitionQuotationSchema } from '@/lib/validators';
 import { auditLogger, evaluateQuotation, dealEvents } from '@/lib/services';
 
@@ -56,13 +56,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const previousStatus = quotation.status;
     let newStatus: QuotationStatus = quotation.status as QuotationStatus;
     const actorType = session.user.actorType;
+    let riskResult: RiskScoreResult | null = null;
 
     // State machine logic
     switch (action) {
       case 'CONFIRM':
         if (quotation.status === 'DRAFT') {
-          // Phase 1: Skip approval logic, bypass directly to APPROVED
-          newStatus = QuotationStatus.APPROVED;
+          // Evaluate risk score to determine routing
+          riskResult = await evaluateQuotation(quotationId);
+          newStatus = riskResult.status;
+
+          // If requires approval, create approval record
+          if (newStatus === QuotationStatus.PENDING_MANAGER_APPROVAL) {
+            await prisma.approval.create({
+              data: {
+                quotationId,
+                level: 'MANAGER',
+                status: 'PENDING',
+              },
+            });
+          }
           
           await prisma.quotation.update({
             where: { id: quotationId },
@@ -72,6 +85,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
               lastActivityAt: new Date(),
             },
           });
+
+          // If auto-approved (no violations), emit approved event
+          if (newStatus === QuotationStatus.APPROVED) {
+            dealEvents.emit('quotation.approved', {
+              quotationId,
+              quotation: quotation as any,
+              approvalLevel: 'MANAGER', // Auto-approved passes manager level
+              approverId: session.user.id,
+              approvedAt: new Date(),
+            });
+          }
         } else if (quotation.status === 'APPROVED') {
           newStatus = QuotationStatus.CONFIRMED;
           
@@ -109,7 +133,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }
 
         if (quotation.status === 'PENDING_MANAGER_APPROVAL') {
-          const riskResult = await evaluateQuotation(quotationId);
+          // Re-evaluate to check if finance approval is needed
+          riskResult = await evaluateQuotation(quotationId);
           
           if (riskResult.requiresFinance) {
             newStatus = QuotationStatus.PENDING_FINANCE_APPROVAL;
@@ -248,17 +273,50 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           );
         }
 
-        // Phase 1: Skip approval logic, bypass directly to DRAFT (under review)
-        // A real system would route back to PENDING_MANAGER_APPROVAL if thresholds breached
-        newStatus = QuotationStatus.DRAFT;
+        if (quotation.status !== 'APPROVED') {
+          return NextResponse.json(
+            { success: false, error: { code: 'INVALID_STATE', message: 'Can only counter APPROVED quotations' } },
+            { status: 400 }
+          );
+        }
+
+        // Re-evaluate risk with the counter proposal
+        // The counter discount is already applied to the quotation in the counter route
+        riskResult = await evaluateQuotation(quotationId);
+        
+        // Route based on new risk score
+        if (riskResult.blendedScore > 0) {
+          // Counter breached thresholds - needs re-approval
+          newStatus = QuotationStatus.PENDING_MANAGER_APPROVAL;
+          await prisma.approval.create({
+            data: {
+              quotationId,
+              level: 'MANAGER',
+              status: 'PENDING',
+            },
+          });
+        } else {
+          // Counter is within limits - back to draft for rep review
+          newStatus = QuotationStatus.DRAFT;
+        }
         
         await prisma.quotation.update({
           where: { id: quotationId },
           data: {
             status: newStatus,
-            blendedRiskScore: counterResult.blendedScore,
+            blendedRiskScore: riskResult.blendedScore,
             lastActivityAt: new Date(),
           },
+        });
+
+        dealEvents.emit('portal.counterDiscount', {
+          quotationId,
+          quotationLineId: '', // Overall discount, not line-specific
+          customerId: session.user.id,
+          requestedDiscountPct: quotation.overallDiscountPct?.toNumber() ?? 0,
+          previousDiscountPct: 0,
+          comment: 'Counter discount submitted via transition API',
+          requestedAt: new Date(),
         });
         break;
 
@@ -310,6 +368,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         status: updated!.status,
         blendedRiskScore: updated!.blendedRiskScore?.toNumber() ?? null,
         previousStatus,
+        riskResult: riskResult ? {
+          blendedScore: riskResult.blendedScore,
+          requiresManager: riskResult.requiresManager,
+          requiresFinance: riskResult.requiresFinance,
+          violationCount: riskResult.lineViolations.length,
+        } : null,
         lastActivityAt: updated!.lastActivityAt.toISOString(),
       },
       message: `Quotation ${action.toLowerCase()}ed successfully`,

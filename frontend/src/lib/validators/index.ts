@@ -20,10 +20,19 @@ import {
 export const idSchema = z.string().cuid();
 
 export const paginationSchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  page: z.preprocess(
+    (val) => (val === null || val === '' || val === undefined) ? undefined : val,
+    z.coerce.number().int().min(1).default(1)
+  ),
+  pageSize: z.preprocess(
+    (val) => (val === null || val === '' || val === undefined) ? undefined : val,
+    z.coerce.number().int().min(1).max(100).default(20)
+  ),
   sortBy: z.string().optional(),
-  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+  sortOrder: z.preprocess(
+    (val) => (val === null || val === '' || val === undefined) ? undefined : val,
+    z.enum(['asc', 'desc']).default('desc')
+  ),
 });
 
 export const dateRangeSchema = z.object({

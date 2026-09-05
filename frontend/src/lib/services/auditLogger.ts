@@ -225,6 +225,27 @@ class AuditLogger {
   }
 
   /**
+   * Log an approval action (approve/reject/return)
+   */
+  async logApprovalAction(
+    actorId: string,
+    approvalId: string,
+    quotationId: string,
+    level: string,
+    action: 'APPROVE' | 'REJECT' | 'RETURN',
+    reason?: string
+  ): Promise<void> {
+    await this.logWithHeaders(actorId, ActorType.INTERNAL, {
+      entityType: 'APPROVAL',
+      entityId: approvalId,
+      action,
+      beforeState: { level, quotationId },
+      afterState: { status: action === 'APPROVE' ? 'APPROVED' : action === 'REJECT' ? 'REJECTED' : 'RETURNED' },
+      reason,
+    });
+  }
+
+  /**
    * Sanitize state objects by removing sensitive fields
    */
   private sanitizeState(state: Record<string, unknown>): Record<string, unknown> {
