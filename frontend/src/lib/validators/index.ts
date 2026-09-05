@@ -167,11 +167,45 @@ export const updateStockLevelSchema = z.object({
 // FULFILLMENT VALIDATORS
 // ===========================================
 
+import { FulfillmentStatus } from '@prisma/client';
+
 export const manualFulfillmentOverrideSchema = z.object({
   splits: z.array(z.object({
     warehouseId: z.string().cuid('Invalid warehouse ID'),
     quantity: z.number().int().min(0),
   })).min(1, 'At least one split is required'),
+});
+
+export const fulfillmentStatusTransitionSchema = z.object({
+  status: z.nativeEnum(FulfillmentStatus),
+  actualShipDate: z.string().datetime().optional(),
+});
+
+export const fulfillmentFiltersSchema = z.object({
+  status: z.nativeEnum(FulfillmentStatus).optional(),
+  isBackorder: z.coerce.boolean().optional(),
+  warehouseId: z.string().cuid().optional(),
+  quotationId: z.string().cuid().optional(),
+});
+
+export const upsertStockLevelSchema = z.object({
+  warehouseId: z.string().cuid('Invalid warehouse ID'),
+  productId: z.string().cuid('Invalid product ID'),
+  quantityAvailable: z.number().int().min(0, 'Quantity must be non-negative'),
+  reorderPoint: z.number().int().min(0).optional().nullable(),
+});
+
+export const bulkUpsertStockLevelsSchema = z.object({
+  updates: z.array(upsertStockLevelSchema).min(1, 'At least one update is required'),
+});
+
+export const createFulfillmentSplitSchema = z.object({
+  quotationLineId: z.string().cuid('Invalid quotation line ID'),
+  warehouseId: z.string().cuid('Invalid warehouse ID'),
+  quantityFulfilled: z.number().int().min(1, 'Quantity must be at least 1'),
+  isBackorder: z.boolean().default(false),
+  isManualOverride: z.boolean().default(false),
+  estimatedShipDate: z.string().datetime().optional(),
 });
 
 // ===========================================

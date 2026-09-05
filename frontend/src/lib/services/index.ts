@@ -99,3 +99,55 @@ export {
   type UpdatePriceListInput,
   type PriceListItemInput,
 } from './catalogService';
+
+
+// Fulfillment Service (M3 - Dev B)
+export {
+  // Warehouse functions
+  getWarehouses,
+  getWarehouseById,
+  getWarehouseByCode,
+  createWarehouse,
+  updateWarehouse,
+  deactivateWarehouse,
+  // Stock level functions
+  getProductStockLevels,
+  getWarehouseStockLevels,
+  getTotalAvailableStock,
+  upsertStockLevel,
+  bulkUpsertStockLevels,
+  adjustStockLevel,
+  getLowStockAlerts,
+  // Warehouse split algorithm
+  calculateWarehouseSplit,
+  validateManualSplits,
+  // Fulfillment management
+  getFulfillmentSplits,
+  getFulfillmentSplitById,
+  getFulfillmentSplitsByLineId,
+  getFulfillmentSplitsByQuotationId,
+  createFulfillmentSplits,
+  generateFulfillmentForQuotation,
+  // Fulfillment state machine
+  isValidFulfillmentTransition,
+  transitionFulfillmentStatus,
+  shipFulfillment,
+  deliverFulfillment,
+  cancelFulfillment,
+  // Backorder management
+  getBackorders,
+  checkBackorderAvailability,
+  // Delivery tracking
+  getDeliverySlippageAlerts,
+  // Summary & stats
+  getFulfillmentSummary,
+  // Types
+  type WarehouseFilters,
+  type CreateWarehouseInput,
+  type UpdateWarehouseInput,
+  type StockUpdateInput,
+  type FulfillmentSplitResult,
+  type SplitCalculationResult,
+  type ManualOverrideSplit,
+  type FulfillmentFilters,
+} from './fulfillmentService';
