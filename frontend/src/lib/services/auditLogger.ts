@@ -24,6 +24,7 @@ export type AuditEntityType =
   | 'APPROVAL_CHAIN'
   | 'QUOTATION'
   | 'QUOTATION_LINE'
+  | 'QUOTATION_COMMENT'
   | 'APPROVAL'
   | 'WAREHOUSE'
   | 'STOCK_LEVEL'

@@ -181,6 +181,18 @@ export interface CustomerCounterDiscountEvent {
   requestedAt: Date;
 }
 
+export interface PortalCommentEvent {
+  quotationId: string;
+  quotationNumber: string;
+  customerId: string;
+  customerName: string;
+  commentId: string;
+  commentText: string;
+  quotationLineId: string | null;
+  repId: string;
+  createdAt: Date;
+}
+
 export interface BackorderReadyEvent {
   fulfillmentSplitId: string;
   quotationLineId: string;
@@ -213,6 +225,7 @@ export interface DealEventMap {
   'subscription.cancelled': SubscriptionCancelledEvent;
   'subscription.renewed': SubscriptionRenewedEvent;
   'portal.counterDiscount': CustomerCounterDiscountEvent;
+  'portal.comment': PortalCommentEvent;
 }
 
 // ===========================================

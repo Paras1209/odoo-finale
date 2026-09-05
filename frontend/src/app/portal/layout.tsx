@@ -36,20 +36,19 @@ export default function PortalLayout({
   const { data: session, status } = useSession();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Don't apply layout to login page
-  if (pathname === '/portal/login') {
-    return <>{children}</>;
-  }
+  const isLoginPage = pathname === '/portal/login';
 
-  // Check authentication status
+  // Check authentication status - only redirect if not on login page
   useEffect(() => {
+    if (isLoginPage) return;
+    
     if (status === 'unauthenticated') {
       router.push('/portal/login');
     } else if (status === 'authenticated' && session?.user?.actorType !== ActorType.CUSTOMER) {
       // Internal user tried to access portal - redirect to workspace
       router.push('/workspace');
     }
-  }, [status, session, router]);
+  }, [status, session, router, isLoginPage]);
 
   // Handle sign out
   const handleSignOut = async () => {
@@ -63,20 +62,38 @@ export default function PortalLayout({
     }
   };
 
-  // Show loading state while checking auth
-  if (status === 'loading') {
+  // Don't apply layout to login page - return after all hooks are called
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
+
+  // Show loading state while checking auth or during sign out
+  if (status === 'loading' || isLoggingOut) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <p className="mt-4 text-gray-600">{isLoggingOut ? 'Signing out...' : 'Loading...'}</p>
         </div>
       </div>
     );
   }
 
-  // Don't render if not authenticated
-  if (status !== 'authenticated' || !session?.user) {
+  // Show loading state while redirecting unauthenticated users
+  // This prevents the NotFoundError by keeping a valid component tree
+  if (status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if session user is not available
+  if (!session?.user) {
     return null;
   }
 
