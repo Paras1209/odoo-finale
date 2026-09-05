@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { ActorType } from '@/lib/types';
-import { calculateWarehouseSplit } from '@/lib/services';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,20 +15,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch quotations that need fulfillment (CONFIRMED)
-    // Only physical products need fulfillment
+    // Fetch quotations that need fulfillment
     const quotations = await prisma.quotation.findMany({
       where: {
-        status: { in: ['APPROVED', 'CONFIRMED'] },
-        lines: {
-          some: {
-            product: {
-              category: {
-                notIn: ['SERVICE', 'SUBSCRIPTION']
-              }
-            }
-          }
-        }
+        status: { in: ['APPROVED', 'CONFIRMED'] }
       },
       include: {
         customer: { select: { name: true, companyName: true } },
@@ -43,44 +34,113 @@ export async function GET(request: NextRequest) {
     const canBeFulfilled = [];
     const awaitingFulfillment = [];
 
+    // Pre-fetch stock levels for all products across all active warehouses to prevent N+1
+    const physicalProductIds = Array.from(new Set(
+      quotations
+        .flatMap(q => q.lines)
+        .filter(l => l.product.category !== 'SERVICE' && l.product.category !== 'SUBSCRIPTION')
+        .map(l => l.productId)
+    ));
+
+    const stockLevels = await prisma.stockLevel.findMany({
+      where: {
+        productId: { in: physicalProductIds },
+        warehouse: { isActive: true },
+        quantityAvailable: { gt: 0 }
+      },
+      include: {
+        warehouse: {
+          select: { id: true, name: true, code: true, shippingCostWeight: true },
+        }
+      }
+    });
+
+    // Group stock by product and sort like calculateWarehouseSplit
+    const stockByProduct: Record<string, typeof stockLevels> = {};
+    for (const sl of stockLevels) {
+      if (!stockByProduct[sl.productId]) stockByProduct[sl.productId] = [];
+      stockByProduct[sl.productId].push(sl);
+    }
+    
+    // Sort logic from calculateWarehouseSplit: primary quantity desc, secondary shippingCostWeight asc
+    for (const pid of Object.keys(stockByProduct)) {
+      stockByProduct[pid].sort((a, b) => {
+        if (b.quantityAvailable !== a.quantityAvailable) {
+          return b.quantityAvailable - a.quantityAvailable;
+        }
+        return Number(a.warehouse.shippingCostWeight) - Number(b.warehouse.shippingCostWeight);
+      });
+    }
+
     // Evaluate each quotation
     for (const q of quotations) {
-      // Filter out non-physical lines for fulfillment logic
       const physicalLines = q.lines.filter(l => l.product.category !== 'SERVICE' && l.product.category !== 'SUBSCRIPTION');
       
       let singleWarehousePossible = true;
       let totalBackorder = false;
       const lineEvaluations = [];
 
+      // If no physical lines, it can be fulfilled automatically without warehouse splits
+      if (physicalLines.length === 0) {
+        canBeFulfilled.push({
+          id: q.id,
+          quotationNumber: q.quotationNumber,
+          customerName: q.customer.name,
+          companyName: q.customer.companyName,
+          totalAmount: q.totalAmount,
+          createdAt: q.createdAt,
+          lines: [],
+          warehouseId: 'N/A',
+          warehouseName: 'Digital / Service (No Warehouse)'
+        });
+        continue;
+      }
+
       for (const line of physicalLines) {
-        // Find splits for this line
-        const calc = await calculateWarehouseSplit(line.productId, line.quantity);
+        // In-memory split calculation
+        const splits = [];
+        let remaining = line.quantity;
+        const availableStocks = stockByProduct[line.productId] || [];
+
+        for (const sl of availableStocks) {
+          if (remaining <= 0) break;
+          const take = Math.min(sl.quantityAvailable, remaining);
+          if (take > 0) {
+            splits.push({
+              warehouseId: sl.warehouse.id,
+              warehouseName: sl.warehouse.name,
+              warehouseCode: sl.warehouse.code,
+              quantity: take,
+              availableStock: sl.quantityAvailable
+            });
+            remaining -= take;
+          }
+        }
+
+        const isBackorder = remaining > 0;
+
         lineEvaluations.push({
           lineId: line.id,
           productName: line.product.name,
           quantity: line.quantity,
-          splits: calc.splits,
-          isBackorder: calc.isBackorder,
-          shortfall: calc.shortfall
+          splits,
+          isBackorder,
+          shortfall: remaining
         });
 
-        if (calc.isBackorder) {
+        if (isBackorder) {
           totalBackorder = true;
           singleWarehousePossible = false;
-        } else if (calc.splits.length > 1) {
-          // If a single line needs multiple warehouses, it's not a single warehouse fulfillment
+        } else if (splits.length > 1) {
           singleWarehousePossible = false;
         }
       }
 
-      // Check if ALL lines can be fulfilled by the SAME single warehouse
       if (singleWarehousePossible && lineEvaluations.length > 0) {
-        // Get the warehouse used by the first line
         const firstWarehouseId = lineEvaluations[0].splits.length > 0 
           ? lineEvaluations[0].splits[0].warehouseId 
           : null;
         
-        // Ensure ALL lines use this exact same warehouse
         const allSameWarehouse = lineEvaluations.every(le => 
           le.splits.length === 1 && le.splits[0].warehouseId === firstWarehouseId
         );
@@ -101,7 +161,6 @@ export async function GET(request: NextRequest) {
       };
 
       if (singleWarehousePossible && !totalBackorder && lineEvaluations.length > 0 && lineEvaluations[0].splits.length > 0) {
-        // Add the single warehouse info for UI
         canBeFulfilled.push({
           ...quotationData,
           warehouseId: lineEvaluations[0].splits[0].warehouseId,

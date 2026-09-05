@@ -45,7 +45,7 @@ export default function FulfillmentPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/fulfillment/quotations');
+      const res = await fetch('/api/fulfillment/quotations', { cache: 'no-store' });
       const data = await res.json();
 
       if (data.success) {
@@ -66,8 +66,9 @@ export default function FulfillmentPage() {
     fetchQuotations();
   }, [fetchQuotations]);
 
-  const handleAction = async (quotationId: string, action: string) => {
-    if (!confirm(`Are you sure you want to perform action: ${action}?`)) return;
+  const handleAction = async (quotationId: string, action: string, customMessage?: string) => {
+    const defaultMsg = `Are you sure you want to perform this action?`;
+    if (!confirm(customMessage || defaultMsg)) return;
 
     try {
       const res = await fetch(`/api/fulfillment/quotations/${quotationId}/action`, {
@@ -137,7 +138,7 @@ export default function FulfillmentPage() {
                       <td className="px-4 py-4 text-green-700 font-semibold">{q.warehouseName}</td>
                       <td className="px-4 py-4 text-gray-500">{formatDate(q.createdAt)}</td>
                       <td className="px-4 py-4 text-right">
-                        <button onClick={() => handleAction(q.id, 'ACCEPT_SPLIT')} className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded">
+                        <button onClick={() => handleAction(q.id, 'ACCEPT_SPLIT', 'Are you sure you want to process fulfillment for this order?')} className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded">
                           Accept & Process
                         </button>
                       </td>
@@ -211,13 +212,13 @@ export default function FulfillmentPage() {
                               <div className="flex justify-end gap-3 pt-3 border-t">
                                 {q.hasBackorder ? (
                                   <>
-                                    <button onClick={() => handleAction(q.id, 'CANCEL')} className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 font-medium">Cancel Order</button>
-                                    <button onClick={() => handleAction(q.id, 'KEEP_ACTIVE')} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium">Keep Active</button>
+                                    <button onClick={() => handleAction(q.id, 'CANCEL', 'Are you sure you want to completely cancel this order due to backorder?')} className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 font-medium">Cancel Order</button>
+                                    <button onClick={() => handleAction(q.id, 'KEEP_ACTIVE', 'Are you sure you want to keep this order active while awaiting stock?')} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium">Keep Active</button>
                                   </>
                                 ) : (
                                   <>
-                                    <button onClick={() => handleAction(q.id, 'REJECT')} className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 font-medium">Reject Split</button>
-                                    <button onClick={() => handleAction(q.id, 'ACCEPT_SPLIT')} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium">Accept Split</button>
+                                    <button onClick={() => handleAction(q.id, 'REJECT', 'Are you sure you want to reject this split configuration? This will cancel the order.')} className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 font-medium">Reject Split</button>
+                                    <button onClick={() => handleAction(q.id, 'ACCEPT_SPLIT', 'Are you sure you want to accept this split configuration and begin processing?')} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium">Accept Split</button>
                                   </>
                                 )}
                               </div>
