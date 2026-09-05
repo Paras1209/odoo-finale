@@ -7,7 +7,7 @@ import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { ActorType } from '@/lib/types';
 import { updateQuotationLineSchema } from '@/lib/validators';
-import { auditLogger } from '@/lib/services';
+import { auditLogger, evaluateQuotation } from '@/lib/services';
 
 interface RouteParams {
   params: Promise<{ id: string; lineId: string }>;
@@ -191,7 +191,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// Helper function to update quotation totals
+// Helper function to update quotation totals and recalculate risk score
 async function updateQuotationTotals(quotationId: string) {
   const lines = await prisma.quotationLine.findMany({
     where: { quotationId },
@@ -201,12 +201,24 @@ async function updateQuotationTotals(quotationId: string) {
   const totalMargin = lines.reduce((sum, line) => sum + line.marginAmount.toNumber(), 0);
   const totalMarginPct = totalAmount > 0 ? (totalMargin / totalAmount) * 100 : 0;
 
+  // Recalculate risk score whenever lines change
+  let blendedRiskScore = 0;
+  if (lines.length > 0) {
+    try {
+      const riskResult = await evaluateQuotation(quotationId);
+      blendedRiskScore = riskResult.blendedScore;
+    } catch (error) {
+      console.error('[Quotation/Lines] Risk score calculation failed:', error);
+    }
+  }
+
   await prisma.quotation.update({
     where: { id: quotationId },
     data: {
       totalAmount,
       totalMargin,
       totalMarginPct,
+      blendedRiskScore,
       lastActivityAt: new Date(),
     },
   });
