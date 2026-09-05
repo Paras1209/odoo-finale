@@ -1,0 +1,561 @@
+// ===========================================
+// DealFlow360 - Complete Prisma Schema
+// ===========================================
+// PHASE 0: This schema is frozen after initial setup.
+// Only add new fields via small, coordinated changes.
+// ===========================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================
+// IDENTITY & ROLES
+// ===========================================
+
+/// Internal users (Sales Rep, Manager, Finance, Admin)
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(SALES_REP)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  quotations      Quotation[]       @relation("RepQuotations")
+  approvals       Approval[]        @relation("ApproverApprovals")
+  auditLogs       AuditLog[]        @relation("ActorAuditLogs")
+
+  @@map("users")
+}
+
+enum UserRole {
+  SALES_REP
+  SALES_MANAGER
+  FINANCE_OPS
+  ADMIN
+}
+
+/// Portal customers (external users who view/negotiate quotations)
+model Customer {
+  id                 String       @id @default(cuid())
+  name               String
+  email              String       @unique
+  portalPasswordHash String?      @map("portal_password_hash")
+  tier               CustomerTier @default(BRONZE)
+  companyName        String?      @map("company_name")
+  phone              String?
+  address            String?
+  isActive           Boolean      @default(true) @map("is_active")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  quotations    Quotation[]
+  auditLogs     AuditLog[]   @relation("CustomerAuditLogs")
+
+  @@map("customers")
+}
+
+enum CustomerTier {
+  BRONZE
+  SILVER
+  GOLD
+}
+
+// ===========================================
+// CATALOG & PRICING (M1 - Dev B)
+// ===========================================
+
+/// Products in the catalog
+model Product {
+  id          String          @id @default(cuid())
+  name        String
+  sku         String?         @unique
+  category    ProductCategory
+  costPrice   Decimal         @map("cost_price") @db.Decimal(12, 2)
+  salePrice   Decimal         @map("sale_price") @db.Decimal(12, 2)
+  unit        String          @default("unit") // e.g., "unit", "hour", "month"
+  taxPct      Decimal         @default(0) @map("tax_pct") @db.Decimal(5, 2)
+  description String?
+  isActive    Boolean         @default(true) @map("is_active")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  variants         ProductVariant[]
+  priceListItems   PriceListItem[]
+  stockLevels      StockLevel[]
+  quotationLines   QuotationLine[]
+  subscriptionPlan SubscriptionPlan?
+  pairingsFrom     ProductPairing[]  @relation("ProductPairingsFrom")
+  pairingsTo       ProductPairing[]  @relation("ProductPairingsTo")
+
+  @@map("products")
+}
+
+enum ProductCategory {
+  HARDWARE
+  SERVICE
+  SUBSCRIPTION
+}
+
+/// Product variants (e.g., size, color, pack quantity)
+model ProductVariant {
+  id         String  @id @default(cuid())
+  productId  String  @map("product_id")
+  attribute  String  // e.g., "Size", "Color", "Pack"
+  value      String  // e.g., "Large", "Blue", "10-pack"
+  extraPrice Decimal @default(0) @map("extra_price") @db.Decimal(12, 2)
+
+  // Relations
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_variants")
+}
+
+/// Price lists for different customer tiers/currencies
+model PriceList {
+  id           String        @id @default(cuid())
+  name         String
+  customerTier CustomerTier? @map("customer_tier")
+  currency     String        @default("USD")
+  isDefault    Boolean       @default(false) @map("is_default")
+  validFrom    DateTime?     @map("valid_from")
+  validTo      DateTime?     @map("valid_to")
+  isActive     Boolean       @default(true) @map("is_active")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  items PriceListItem[]
+
+  @@map("price_lists")
+}
+
+/// Individual price list items
+model PriceListItem {
+  id          String  @id @default(cuid())
+  priceListId String  @map("price_list_id")
+  productId   String  @map("product_id")
+  price       Decimal @db.Decimal(12, 2)
+
+  // Relations
+  priceList PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([priceListId, productId])
+  @@map("price_list_items")
+}
+
+// ===========================================
+// DISCOUNT GOVERNANCE (M2 - Phase 0 Setup)
+// ===========================================
+
+/// Discount ceilings per customer tier and product category
+model DiscountTier {
+  id             String          @id @default(cuid())
+  customerTier   CustomerTier    @map("customer_tier")
+  category       ProductCategory
+  maxDiscountPct Decimal         @map("max_discount_pct") @db.Decimal(5, 2)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  @@unique([customerTier, category])
+  @@map("discount_tiers")
+}
+
+/// Approval chain configuration based on risk score thresholds
+/// Configurable via DB - default threshold = 1
+model ApprovalChain {
+  id              String   @id @default(cuid())
+  minRiskScore    Decimal  @map("min_risk_score") @db.Decimal(10, 2)
+  maxRiskScore    Decimal  @map("max_risk_score") @db.Decimal(10, 2)
+  requiresManager Boolean  @default(false) @map("requires_manager")
+  requiresFinance Boolean  @default(false) @map("requires_finance")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("approval_chains")
+}
+
+// ===========================================
+// QUOTATION (M2 Core - Dev A)
+// ===========================================
+
+/// Main quotation entity
+model Quotation {
+  id                String          @id @default(cuid())
+  quotationNumber   String          @unique @map("quotation_number")
+  customerId        String          @map("customer_id")
+  repId             String          @map("rep_id")
+  status            QuotationStatus @default(DRAFT)
+  blendedRiskScore  Decimal?        @map("blended_risk_score") @db.Decimal(10, 2)
+  totalAmount       Decimal         @default(0) @map("total_amount") @db.Decimal(12, 2)
+  totalMargin       Decimal         @default(0) @map("total_margin") @db.Decimal(12, 2)
+  totalMarginPct    Decimal         @default(0) @map("total_margin_pct") @db.Decimal(5, 2)
+  notes             String?
+  validUntil        DateTime?       @map("valid_until")
+  lastActivityAt    DateTime        @default(now()) @map("last_activity_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  customer   Customer        @relation(fields: [customerId], references: [id])
+  rep        User            @relation("RepQuotations", fields: [repId], references: [id])
+  lines      QuotationLine[]
+  approvals  Approval[]
+  invoices   Invoice[]
+  comments   QuotationComment[]
+
+  @@index([status, lastActivityAt])
+  @@index([customerId])
+  @@index([repId])
+  @@map("quotations")
+}
+
+enum QuotationStatus {
+  DRAFT
+  PENDING_MANAGER_APPROVAL
+  PENDING_FINANCE_APPROVAL
+  APPROVED
+  REJECTED
+  CONFIRMED
+  FULFILLING
+  BILLED
+  CANCELLED
+}
+
+/// Individual line items on a quotation
+model QuotationLine {
+  id               String            @id @default(cuid())
+  quotationId      String            @map("quotation_id")
+  productId        String            @map("product_id")
+  quantity         Int               @default(1)
+  unitPrice        Decimal           @map("unit_price") @db.Decimal(12, 2)
+  discountPct      Decimal           @default(0) @map("discount_pct") @db.Decimal(5, 2)
+  lineTotal        Decimal           @default(0) @map("line_total") @db.Decimal(12, 2)
+  lineType         LineType          @default(ONE_TIME) @map("line_type")
+  billingFrequency BillingFrequency? @map("billing_frequency")
+  marginAmount     Decimal           @default(0) @map("margin_amount") @db.Decimal(12, 2)
+  marginPct        Decimal           @default(0) @map("margin_pct") @db.Decimal(5, 2)
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  quotation        Quotation          @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product          Product            @relation(fields: [productId], references: [id])
+  fulfillmentSplits FulfillmentSplit[]
+  billingSchedules BillingSchedule[]
+  comments         QuotationComment[]
+
+  @@map("quotation_lines")
+}
+
+enum LineType {
+  ONE_TIME
+  RECURRING
+}
+
+enum BillingFrequency {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+/// Approval records for quotations
+model Approval {
+  id          String         @id @default(cuid())
+  quotationId String         @map("quotation_id")
+  level       ApprovalLevel
+  approverId  String?        @map("approver_id")
+  status      ApprovalStatus @default(PENDING)
+  reason      String?
+  actedAt     DateTime?      @map("acted_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  // Relations
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  approver  User?     @relation("ApproverApprovals", fields: [approverId], references: [id])
+
+  @@map("approvals")
+}
+
+enum ApprovalLevel {
+  MANAGER
+  FINANCE
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RETURNED
+}
+
+// ===========================================
+// FULFILLMENT & WAREHOUSE (M3 - Dev B)
+// ===========================================
+
+/// Warehouse locations
+model Warehouse {
+  id                 String   @id @default(cuid())
+  name               String
+  code               String   @unique
+  address            String?
+  shippingCostWeight Decimal  @default(1) @map("shipping_cost_weight") @db.Decimal(5, 2)
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  stockLevels       StockLevel[]
+  fulfillmentSplits FulfillmentSplit[]
+
+  @@map("warehouses")
+}
+
+/// Stock levels per product per warehouse
+model StockLevel {
+  id                String   @id @default(cuid())
+  warehouseId       String   @map("warehouse_id")
+  productId         String   @map("product_id")
+  quantityAvailable Int      @default(0) @map("quantity_available")
+  quantityReserved  Int      @default(0) @map("quantity_reserved")
+  reorderPoint      Int?     @map("reorder_point")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([warehouseId, productId])
+  @@index([productId])
+  @@map("stock_levels")
+}
+
+/// Fulfillment splits - how order lines are fulfilled from warehouses
+model FulfillmentSplit {
+  id                 String    @id @default(cuid())
+  quotationLineId    String    @map("quotation_line_id")
+  warehouseId        String    @map("warehouse_id")
+  quantityFulfilled  Int       @map("quantity_fulfilled")
+  isBackorder        Boolean   @default(false) @map("is_backorder")
+  isManualOverride   Boolean   @default(false) @map("is_manual_override")
+  estimatedShipDate  DateTime? @map("estimated_ship_date")
+  actualShipDate     DateTime? @map("actual_ship_date")
+  status             FulfillmentStatus @default(PENDING)
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  quotationLine QuotationLine @relation(fields: [quotationLineId], references: [id], onDelete: Cascade)
+  warehouse     Warehouse     @relation(fields: [warehouseId], references: [id])
+
+  @@map("fulfillment_splits")
+}
+
+enum FulfillmentStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+// ===========================================
+// BILLING & SUBSCRIPTIONS (M4 - Dev A)
+// ===========================================
+
+/// Subscription plan definitions
+model SubscriptionPlan {
+  id            String           @id @default(cuid())
+  productId     String           @unique @map("product_id")
+  name          String
+  frequency     BillingFrequency
+  prorationRule ProrationRule    @default(DAILY) @map("proration_rule")
+  trialDays     Int              @default(0) @map("trial_days")
+  isActive      Boolean          @default(true) @map("is_active")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("subscription_plans")
+}
+
+enum ProrationRule {
+  NONE
+  DAILY
+  WEEKLY
+}
+
+/// Billing schedule for recurring charges
+model BillingSchedule {
+  id              String                @id @default(cuid())
+  quotationLineId String                @map("quotation_line_id")
+  cycleNumber     Int                   @map("cycle_number")
+  dueDate         DateTime              @map("due_date")
+  amount          Decimal               @db.Decimal(12, 2)
+  status          BillingScheduleStatus @default(UPCOMING)
+  invoiceId       String?               @map("invoice_id")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  // Relations
+  quotationLine QuotationLine @relation(fields: [quotationLineId], references: [id], onDelete: Cascade)
+
+  @@index([dueDate, status])
+  @@map("billing_schedules")
+}
+
+enum BillingScheduleStatus {
+  UPCOMING
+  INVOICED
+  PAID
+  REFUNDED
+  CANCELLED
+}
+
+/// Invoices generated from quotations
+model Invoice {
+  id          String        @id @default(cuid())
+  invoiceNumber String      @unique @map("invoice_number")
+  quotationId String        @map("quotation_id")
+  invoiceType InvoiceType   @map("invoice_type")
+  amount      Decimal       @db.Decimal(12, 2)
+  taxAmount   Decimal       @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  totalAmount Decimal       @map("total_amount") @db.Decimal(12, 2)
+  status      InvoiceStatus @default(DRAFT)
+  dueDate     DateTime?     @map("due_date")
+  issuedAt    DateTime?     @map("issued_at")
+  paidAt      DateTime?     @map("paid_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  quotation   Quotation    @relation(fields: [quotationId], references: [id])
+  creditNotes CreditNote[]
+
+  @@index([status])
+  @@map("invoices")
+}
+
+enum InvoiceType {
+  ONE_TIME
+  RECURRING
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+/// Credit notes for refunds/adjustments
+model CreditNote {
+  id        String   @id @default(cuid())
+  creditNoteNumber String @unique @map("credit_note_number")
+  invoiceId String   @map("invoice_id")
+  amount    Decimal  @db.Decimal(12, 2)
+  reason    String
+  status    CreditNoteStatus @default(DRAFT)
+  issuedAt  DateTime? @map("issued_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@map("credit_notes")
+}
+
+enum CreditNoteStatus {
+  DRAFT
+  ISSUED
+  APPLIED
+  CANCELLED
+}
+
+// ===========================================
+// UPSELL & CROSS-SELL (M2 Supporting - Dev B)
+// ===========================================
+
+/// Product pairing suggestions for upsell/cross-sell
+model ProductPairing {
+  id                 String   @id @default(cuid())
+  productId          String   @map("product_id")
+  suggestedProductId String   @map("suggested_product_id")
+  weight             Decimal  @default(1) @map("weight") @db.Decimal(5, 2) // Higher = stronger suggestion
+  isPromoted         Boolean  @default(false) @map("is_promoted")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  // Relations
+  product          Product @relation("ProductPairingsFrom", fields: [productId], references: [id], onDelete: Cascade)
+  suggestedProduct Product @relation("ProductPairingsTo", fields: [suggestedProductId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, suggestedProductId])
+  @@map("product_pairings")
+}
+
+// ===========================================
+// CROSS-CUTTING CONCERNS
+// ===========================================
+
+/// Unified audit log for all system actions
+model AuditLog {
+  id          String    @id @default(cuid())
+  entityType  String    @map("entity_type") // e.g., "QUOTATION", "APPROVAL", "INVOICE"
+  entityId    String    @map("entity_id")
+  actorId     String    @map("actor_id")
+  actorType   ActorType @map("actor_type")
+  action      String    // e.g., "CREATE", "UPDATE", "APPROVE", "REJECT"
+  reason      String?
+  beforeState Json?     @map("before_state")
+  afterState  Json?     @map("after_state")
+  ipAddress   String?   @map("ip_address")
+  userAgent   String?   @map("user_agent")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations - polymorphic: actor can be User or Customer
+  user     User?     @relation("ActorAuditLogs", fields: [actorId], references: [id], map: "audit_logs_user_fk")
+  customer Customer? @relation("CustomerAuditLogs", fields: [actorId], references: [id], map: "audit_logs_customer_fk")
+
+  @@index([entityType, entityId])
+  @@index([actorId, actorType])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum ActorType {
+  INTERNAL
+  CUSTOMER
+}
+
+/// Comments on quotation lines (for negotiation)
+model QuotationComment {
+  id              String      @id @default(cuid())
+  quotationId     String      @map("quotation_id")
+  quotationLineId String?     @map("quotation_line_id")
+  authorType      ActorType   @map("author_type")
+  authorId        String      @map("author_id")
+  commentText     String      @map("comment_text")
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  quotation     Quotation      @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  quotationLine QuotationLine? @relation(fields: [quotationLineId], references: [id], onDelete: SetNull)
+
+  @@index([quotationId])
+  @@map("quotation_comments")
+}
