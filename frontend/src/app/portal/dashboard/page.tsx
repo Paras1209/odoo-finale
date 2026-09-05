@@ -76,7 +76,7 @@ export default function PortalDashboard() {
           <AlertIcon className="w-6 h-6 text-red-500" />
         </div>
         <p className="text-red-700 font-medium mb-4">{error}</p>
-        <button onClick={fetchDashboard} className="btn-primary">
+        <button onClick={() => fetchDashboard()} className="btn-primary">
           Try Again
         </button>
       </div>
