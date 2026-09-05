@@ -27,30 +27,62 @@
 | PDF export (dashboard/reports) | `@react-pdf/renderer` or `puppeteer` | React-PDF for programmatic generation, Puppeteer for HTML-to-PDF if needed |
 | Background jobs (optional, if time permits) | Vercel Cron / `node-cron` for self-hosted | Schedule billing cycle advancement, stale deal notifications |
 
-### Next.js Project Structure
+### Next.js Project Structure (Matches Excalidraw Screens 1-15)
 ```
 /app
-  /(auth)                    # Auth pages (login, signup)
-  /(internal)                # Internal workspace (rep, manager, finance)
-    /quotations
-    /approvals
-    /fulfillment
-    /billing
+  /auth                        # Screen 1: Login / Signup
+    /login
+    /signup
+  /(workspace)                 # Internal workspace (rep, manager, finance)
+    /workspace
+      page.tsx                 # Screen 2: Sales Dashboard / Home
+      /quotations              # Screen 3: Quotation List
+        /[id]                  # Screen 4: Quotation Builder / Detail
+      /approvals               # Screen 5: Approval List
+        /[id]                  # Screen 6: Approval Detail
+      /fulfillment             # Screen 7: Fulfillment List
+        /[id]                  # Screen 8: Fulfillment Detail
+      /subscriptions           # Screen 9: Subscriptions List
+        /[id]                  # Screen 10: Subscription Detail
+      /invoices                # Screen 12: Invoices List
+        /[id]                  # Screen 13: Invoice Detail
+      /deal-health             # Screen 14: Deal Health Dashboard
+      /reports                 # Screen 15: Reports with filters/export
+      /catalog                 # Admin: Product management
+      /admin                   # Admin: Users, Settings
+  /portal                      # Screen 11: Customer Portal (separate layout, restricted auth)
+    /login
     /dashboard
-  /(admin)                   # Backend config
-    /products
-    /warehouses
-    /discount-tiers
-    /subscription-plans
-  /(portal)                  # Customer-facing (separate layout, restricted)
     /quotations/[id]
-  /api                       # REST endpoints if needed
+    /invoices
+    /orders
+    /account
+  /api                         # REST endpoints if needed
 /lib
-  /services                  # Business logic (RiskScoreEngine, AuditLogger, etc.)
-  /db                        # Prisma client, queries
-/components                  # Shared UI components
-/prisma                      # Schema + migrations
+  /services                    # Business logic (RiskScoreEngine, AuditLogger, etc.)
+  /db                          # Prisma client, queries
+/components                    # Shared UI components
+/prisma                        # Schema + migrations
 ```
+
+### Screen-to-Route Mapping
+| Screen | Route | Description |
+|--------|-------|-------------|
+| 1 | `/auth/login`, `/auth/signup` | Entry point for all users |
+| 2 | `/workspace` | Dashboard with widgets: Pending Approvals, Open Quotations, At-Risk Deals |
+| 3 | `/workspace/quotations` | Quotation list view |
+| 4 | `/workspace/quotations/[id]` | Quotation builder with product picker, discounts, margin |
+| 5 | `/workspace/approvals` | Approval queue list |
+| 6 | `/workspace/approvals/[id]` | Approval detail with approve/reject/return |
+| 7 | `/workspace/fulfillment` | Fulfillment orders list |
+| 8 | `/workspace/fulfillment/[id]` | Warehouse split view with accept/override |
+| 9 | `/workspace/subscriptions` | Active subscriptions list |
+| 10 | `/workspace/subscriptions/[id]` | Subscription detail with billing schedule, cancel/modify |
+| 11 | `/portal/*` | Customer portal (separate layout, scoped auth) |
+| 12 | `/workspace/invoices` | Invoices list |
+| 13 | `/workspace/invoices/[id]` | Invoice detail with payment status |
+| 14 | `/workspace/deal-health` | Stalled deals, anomalies, slippage alerts |
+| 15 | `/workspace/reports` | Reporting with filters and PDF/XLS export |
 
 ---
 
@@ -320,7 +352,29 @@ def split_fulfillment(product_id, quantity_needed, warehouses):
 
 ---
 
-### M4 — Billing & Subscriptions
+### M4 — Billing & Subscriptions (Screens 9-10, 12-13)
+
+**Frontend Screens:**
+- **Screen 9 - Subscriptions List** (`/workspace/subscriptions`): Table of all active/pending subscriptions with filters by status, customer, product
+- **Screen 10 - Subscription Detail** (`/workspace/subscriptions/[id]`): Shows billing schedule, allows modify/cancel with proration preview
+- **Screen 12 - Invoices List** (`/workspace/invoices`): Table of all invoices with filters by status (Draft, Sent, Paid, Overdue), customer, date range
+- **Screen 13 - Invoice Detail** (`/workspace/invoices/[id]`): Invoice specifics, payment recording, credit note generation
+
+**API surface:**
+```
+# Subscriptions
+GET    /subscriptions                    # List with filters
+GET    /subscriptions/:id                # Detail with billing schedule
+POST   /subscriptions/:id/modify         # Modify quantity/plan (triggers proration)
+POST   /subscriptions/:id/cancel         # Cancel with refund calculation
+
+# Invoices
+GET    /invoices                         # List with filters
+GET    /invoices/:id                     # Detail
+POST   /invoices/:id/send                # Mark as sent
+POST   /invoices/:id/record-payment      # Record payment, update status
+POST   /invoices/:id/credit-note         # Generate credit note
+```
 
 **Billing schedule generation (on order confirmation):**
 ```python
@@ -393,15 +447,59 @@ def handle_cancellation(subscription_line, cancel_date):
 
 ---
 
-### M5 — Customer Portal
+### M5 — Customer Portal (Screen 11)
 
+**Frontend Screen:**
+- **Screen 11 - Customer Portal** (`/portal/*`): Separate layout with restricted auth, includes:
+  - `/portal/dashboard` - Overview of customer's quotations and orders
+  - `/portal/quotations/[id]` - View quotation, submit comments, counter-discount proposals
+  - `/portal/invoices` - View and download invoices
+  - `/portal/orders` - Track order fulfillment status
+  - `/portal/account` - Profile management
+
+**Key features:**
 - **Separate JWT scope**: `actor_type: 'CUSTOMER'` tokens, issued via a distinct `/portal/login` endpoint (magic link or email+password). Middleware rejects any customer token on internal-only routes and vice versa.
 - **Restricted queries**: portal endpoints must always filter `WHERE customer_id = req.user.customer_id` — never return another customer's data, and never expose `cost_price`/margin fields in the portal API response (strip them at the serializer level, not just hide in UI).
 - **Negotiation actions**: `POST /portal/quotations/:id/comment`, `POST /portal/quotations/:id/counter-discount` — the counter-discount endpoint calls the **same** `transitionQuotation` + `evaluate_quotation` functions M2 uses internally, just invoked with `actor_type: CUSTOMER`.
 
 ---
 
-### M6 — Dashboard & Reporting
+### M6 — Dashboard & Reporting (Screens 2, 14, 15)
+
+**Frontend Screens:**
+- **Screen 2 - Sales Dashboard / Home** (`/workspace`): Central hub with summary widgets:
+  - Pending Approvals card (count + link to Screen 5)
+  - Open Quotations card (count + link to Screen 3)
+  - At-Risk Deals card (count + link to Screen 14)
+  - "+ New Quotation" button
+  - "View Approvals" button
+  - Recent Activity feed (last 10 actions across the system)
+  
+- **Screen 14 - Deal Health Dashboard** (`/workspace/deal-health`): Detailed health monitoring:
+  - Stalled deals table (quotations inactive > N days)
+  - Discount anomaly alerts (discounts well above rep's historical average)
+  - Delivery promise slippage indicators
+  - Click any alert to open the related quotation directly
+  - Automated nudge/escalation action buttons
+  
+- **Screen 15 - Reports** (`/workspace/reports`): Comprehensive reporting:
+  - **Filters**: Period (today, week, custom range), Sales Team/Rep, Approval Status, Product/Category
+  - **Metrics**: Sales performance, discount analysis, fulfillment metrics, billing summary
+  - **Export**: PDF and XLS download options
+
+**API surface:**
+```
+# Dashboard (Screen 2)
+GET /dashboard/summary              # Widget counts and recent activity
+
+# Deal Health (Screen 14)
+GET /dashboard/deal-health          # Stalled deals, anomalies, slippage
+POST /dashboard/deal-health/:id/nudge  # Send nudge notification
+
+# Reports (Screen 15)
+GET /reports                        # Report data with filters
+GET /reports/export?format=pdf|xls  # Export report
+```
 
 Pick **4 real, live metrics** to cover all dashboard requirements:
 
@@ -479,15 +577,17 @@ Use a schema validation library (Zod/Joi) on every mutating endpoint — reject 
 
 ## 7. Phased Build Plan (sequencing + 2-person split)
 
-| Phase | Focus | Owner |
-|---|---|---|
-| 1 | Auth, Product/Price CRUD, basic Quotation builder (no approval logic) | Both (pair) |
-| 2 | Risk score engine + approval state machine — **validate against the worked example before moving on** | Person A |
-| 2 (parallel) | Warehouse split algorithm + stock model | Person B |
-| 3 | Billing/subscription schedule + proration | Person A |
-| 3 (parallel) | Customer portal (auth + negotiation, reuses Person A's M2 functions) | Person B |
-| 4 | Dashboard (3 core metrics) + upsell panel (simple version) | Both |
-| 5 | Seed realistic demo data, rehearse the 8-step test flow, prep architecture diagram | Both |
+| Phase | Focus | Owner | Screens |
+|---|---|---|---|
+| 0 | Auth, Shared types, Event bus, Navigation layout, Seed skeleton | Both (pair) | 1 (partial) |
+| 1 | Auth complete, Product/Price CRUD, basic Quotation builder (no approval logic) | Both | 1, 3-4 (partial) |
+| 2 | Risk score engine + approval state machine — **validate against the worked example before moving on** | Person A | 5-6 |
+| 2 (parallel) | Warehouse split algorithm + stock model + Fulfillment UI | Person B | 7-8 |
+| 3 | Subscriptions list/detail + Billing/subscription schedule + proration | Person A | 9-10 |
+| 3 (parallel) | Customer portal (auth + negotiation, reuses Person A's M2 functions) | Person B | 11 |
+| 4 | Invoices list/detail + Invoice generation | Person A | 12-13 |
+| 4 (parallel) | Dashboard home + Deal Health + Reports + Upsell panel | Person B | 2, 14, 15 |
+| 5 | Seed realistic demo data, rehearse the 8-step test flow, prep architecture diagram | Both | All |
 
 ---
 

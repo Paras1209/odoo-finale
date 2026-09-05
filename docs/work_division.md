@@ -3,6 +3,39 @@
 
 ---
 
+## Screen Reference (from Excalidraw Diagram)
+
+| Screen # | Name | Type | Owner |
+|----------|------|------|-------|
+| 1 | Login / Signup | Auth | Phase 0 (Both) |
+| 2 | Sales Dashboard / Home | Dashboard | Dev B |
+| 3 | Quotation List | List | Dev A |
+| 4 | Quotation Builder / Detail | Detail | Dev A |
+| 5 | Approval List | List | Dev A |
+| 6 | Approval Detail | Detail | Dev A |
+| 7 | Fulfillment List | List | Dev B |
+| 8 | Fulfillment Detail | Detail | Dev B |
+| 9 | Subscriptions List | List | Dev A |
+| 10 | Subscription Detail | Detail | Dev A |
+| 11 | Customer Portal | Portal | Dev B |
+| 12 | Invoices List | List | Dev A |
+| 13 | Invoice Detail | Detail | Dev A |
+| 14 | Deal Health Dashboard | Dashboard | Dev B |
+| 15 | Reports | Reports | Dev B |
+
+**Navigation Tabs (from Excalidraw):**
+- Dashboard → Screen 2
+- Quotations → Screen 3 (list) → Screen 4 (detail)
+- Approvals → Screen 5 (list) → Screen 6 (detail)
+- Fulfillment → Screen 7 (list) → Screen 8 (detail)
+- Subscriptions → Screen 9 (list) → Screen 10 (detail)
+- Invoices → Screen 12 (list) → Screen 13 (detail)
+- Deal Health → Screen 14
+- Reports → Screen 15
+- Customer Portal (separate app) → Screen 11
+
+---
+
 ## 0. The Core Principle
 
 Merge conflicts happen when two people edit **the same file** or **the same lines of a shared file** independently. The fix isn't discipline or communication alone — it's **structural**: organize the codebase so each developer's work lives in physically separate files/folders, and the few genuinely shared files are either (a) built together once and frozen, or (b) structured so additions don't collide.
@@ -33,39 +66,46 @@ Once Phase 0 is committed to `main`, both developers pull it and work independen
 ### Developer A — "The Deal Spine" (Quotation, Approval, Billing)
 Owns the core money/rules logic — the parts that are serially dependent on each other, so it makes sense for one person to carry the context through.
 
-| Module | Backend folder | Frontend folder |
-|---|---|---|
-| M2 — Quotation & Discount Governance | `src/modules/quotation/` | `frontend/src/pages/internal/quotations/` |
-| M2 — Approval Engine | `src/modules/approval/` | `frontend/src/pages/internal/approvals/` |
-| M4 — Billing & Subscriptions | `src/modules/billing/` | `frontend/src/pages/internal/billing/` |
-| Shared: RiskScoreEngine | `src/shared/services/riskScoreEngine.ts` (owned/authored by Dev A, called by others) | — |
+| Module | Backend folder | Frontend folder | Screens |
+|---|---|---|---|
+| M2 — Quotation | `src/modules/quotation/` | `frontend/src/app/(workspace)/workspace/quotations/` | 3, 4 |
+| M2 — Approval Engine | `src/modules/approval/` | `frontend/src/app/(workspace)/workspace/approvals/` | 5, 6 |
+| M4 — Subscriptions | `src/modules/billing/` | `frontend/src/app/(workspace)/workspace/subscriptions/` | 9, 10 |
+| M4 — Invoices | `src/modules/billing/` | `frontend/src/app/(workspace)/workspace/invoices/` | 12, 13 |
+| Shared: RiskScoreEngine | `src/shared/services/riskScoreEngine.ts` (owned/authored by Dev A, called by others) | — | — |
 
 **Specifically builds:**
-- Quotation CRUD + line items
+- Quotation CRUD + line items (Screens 3-4)
 - `evaluate_quotation()` risk score function + unit tests (including the worked example from the requirements doc)
 - Quotation state machine (`transitionQuotation()`)
-- Approval screen + approve/reject/return actions
+- Approval screen + approve/reject/return actions (Screens 5-6)
+- Subscriptions list + detail screens (Screens 9-10)
 - Billing schedule generation + proration logic
+- Invoices list + detail screens (Screens 12-13)
 - Invoice + credit note generation
 - Quotation builder UI (product picker, discount input, live margin display — margin calc itself is client-side math, no dependency on Dev B)
 
 ### Developer B — "Operations & Customer-Facing" (Catalog, Fulfillment, Portal, Dashboard)
 Owns the modules that are more independent of each other and of Dev A's core spine, plus everything customer-facing.
 
-| Module | Backend folder | Frontend folder |
-|---|---|---|
-| M1 — Catalog & Pricing | `src/modules/catalog/` | `frontend/src/pages/admin/catalog/` |
-| M3 — Fulfillment & Warehouse | `src/modules/fulfillment/` | `frontend/src/pages/internal/fulfillment/` |
-| M5 — Customer Portal | `src/modules/portal/` | `frontend/src/pages/portal/` |
-| M6 — Dashboard & Reporting | `src/modules/dashboard/` | `frontend/src/pages/internal/dashboard/` |
-| Upsell/Cross-sell (optional depth) | `src/modules/upsell/` | plugs into Dev A's quotation builder UI as a component |
+| Module | Backend folder | Frontend folder | Screens |
+|---|---|---|---|
+| M1 — Catalog & Pricing | `src/modules/catalog/` | `frontend/src/app/(workspace)/workspace/catalog/` | Admin |
+| M3 — Fulfillment & Warehouse | `src/modules/fulfillment/` | `frontend/src/app/(workspace)/workspace/fulfillment/` | 7, 8 |
+| M5 — Customer Portal | `src/modules/portal/` | `frontend/src/app/portal/` | 11 |
+| M6 — Dashboard | `src/modules/dashboard/` | `frontend/src/app/(workspace)/workspace/` (page.tsx) | 2 |
+| M6 — Deal Health | `src/modules/dashboard/` | `frontend/src/app/(workspace)/workspace/deal-health/` | 14 |
+| M6 — Reports | `src/modules/dashboard/` | `frontend/src/app/(workspace)/workspace/reports/` | 15 |
+| Upsell/Cross-sell (optional depth) | `src/modules/upsell/` | plugs into Dev A's quotation builder UI as a component | — |
 
 **Specifically builds:**
 - Product/price list CRUD + admin config screens (Warehouses, Discount Tiers config UI, Subscription Plans config UI)
-- Warehouse split algorithm + fulfillment screen (accept/override UI)
+- Warehouse split algorithm + fulfillment screens (Screens 7-8: list + accept/override UI)
 - Backorder detection + consolidation prompt
-- Customer portal: separate auth, quotation view, comment/counter-discount UI
-- Dashboard queries (stalled deals, discount anomalies, deal health) + UI
+- Customer portal: separate auth, quotation view, comment/counter-discount UI (Screen 11)
+- Dashboard home with widgets: Pending Approvals, Open Quotations, At-Risk Deals, Recent Activity (Screen 2)
+- Deal Health dashboard: stalled deals, discount anomalies, delivery slippage (Screen 14)
+- Reports with filters and export (Screen 15)
 - Upsell suggestion panel (calls Dev A's quotation to know current cart, but is its own component/service)
 
 ---
@@ -149,11 +189,11 @@ Each dev only edits their own seed file, never the main `seed.ts` orchestrator (
 
 | Phase | Dev A | Dev B | Shared? |
 |---|---|---|---|
-| **Phase 0** (2-3 hrs) | — | — | ✅ Pair together: schema, auth, shared types, event bus, route auto-registration, seed skeleton |
-| **Phase 1** | Quotation CRUD + builder UI (no approval logic yet) | Catalog/Product CRUD + admin config UI | Independent — no shared files touched |
-| **Phase 2** | Risk score engine + approval state machine + approval UI. **Validate against worked example.** | Warehouse split algorithm + stock model + fulfillment UI | Independent, but agree on `dealEvents` event names before starting |
-| **Phase 3** | Billing schedule + proration logic + billing UI | Customer Portal (auth, negotiation UI) — calls Dev A's exported `transitionQuotation()` | One import dependency (Intersection 1) — mock it if Dev A isn't done yet |
-| **Phase 4** | Helps wire upsell panel into Quotation Builder page | Upsell suggestion logic + Dashboard queries/UI | Dev B delivers `<UpsellPanel />` as standalone component (Intersection 3) |
+| **Phase 0** (2-3 hrs) | — | — | ✅ Pair together: schema, auth, shared types, event bus, route auto-registration, seed skeleton, navigation layout |
+| **Phase 1** | Quotation CRUD + builder UI (Screens 3-4, no approval logic yet) | Catalog/Product CRUD + admin config UI | Independent — no shared files touched |
+| **Phase 2** | Risk score engine + approval state machine + approval UI (Screens 5-6). **Validate against worked example.** | Warehouse split algorithm + stock model + fulfillment UI (Screens 7-8) | Independent, but agree on `dealEvents` event names before starting |
+| **Phase 3** | Subscriptions list/detail (Screens 9-10) + billing schedule + proration logic | Customer Portal (Screen 11: auth, negotiation UI) — calls Dev A's exported `transitionQuotation()` | One import dependency (Intersection 1) — mock it if Dev A isn't done yet |
+| **Phase 4** | Invoices list/detail (Screens 12-13) + helps wire upsell panel into Quotation Builder | Dashboard home (Screen 2), Deal Health (Screen 14), Reports (Screen 15) + Upsell suggestion logic | Dev B delivers `<UpsellPanel />` as standalone component (Intersection 3) |
 | **Phase 5** | Both: seed realistic demo data (own seed files), rehearse the 8-step test flow together, prep architecture diagram | | ✅ Together |
 
 ---

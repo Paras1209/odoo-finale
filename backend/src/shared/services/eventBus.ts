@@ -109,12 +109,41 @@ export interface FulfillmentCompletedEvent {
  */
 export interface InvoiceGeneratedEvent {
   invoiceId: string;
+  invoiceNumber: string;
   quotationId: string;
   customerId: string;
   amount: number;
   invoiceType: 'ONE_TIME' | 'RECURRING';
   dueDate: Date;
   generatedAt: Date;
+}
+
+/**
+ * Invoice sent to customer
+ * Emitted by: Dev A (Billing module)
+ * Listened by: Portal module, Dashboard for tracking
+ */
+export interface InvoiceSentEvent {
+  invoiceId: string;
+  invoiceNumber: string;
+  customerId: string;
+  sentAt: Date;
+  sentBy: string;
+}
+
+/**
+ * Invoice status changed (overdue, cancelled)
+ * Emitted by: Dev A (Billing module)
+ * Listened by: Dashboard for alerts, Portal for customer notifications
+ */
+export interface InvoiceStatusChangedEvent {
+  invoiceId: string;
+  invoiceNumber: string;
+  customerId: string;
+  previousStatus: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+  newStatus: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+  changedAt: Date;
+  reason?: string;
 }
 
 /**
@@ -128,6 +157,97 @@ export interface PaymentReceivedEvent {
   customerId: string;
   amount: number;
   paidAt: Date;
+}
+
+/**
+ * Subscription created (from confirmed quotation with recurring lines)
+ * Emitted by: Dev A (Billing module)
+ * Listened by: Dashboard for metrics
+ */
+export interface SubscriptionCreatedEvent {
+  subscriptionId: string;
+  quotationId: string;
+  quotationLineId: string;
+  customerId: string;
+  productId: string;
+  frequency: 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
+  amount: number;
+  startDate: Date;
+  createdAt: Date;
+}
+
+/**
+ * Subscription modified (quantity, plan change)
+ * Emitted by: Dev A (Billing module)
+ * Listened by: Dashboard, Portal for notifications
+ */
+export interface SubscriptionModifiedEvent {
+  subscriptionId: string;
+  quotationLineId: string;
+  customerId: string;
+  previousAmount: number;
+  newAmount: number;
+  previousQuantity: number;
+  newQuantity: number;
+  prorationAmount: number;  // Positive = charge, negative = credit
+  effectiveDate: Date;
+  modifiedBy: {
+    id: string;
+    type: 'INTERNAL' | 'CUSTOMER';
+  };
+  modifiedAt: Date;
+}
+
+/**
+ * Subscription cancelled
+ * Emitted by: Dev A (Billing module)
+ * Listened by: Dashboard for churn metrics, Portal for confirmation
+ */
+export interface SubscriptionCancelledEvent {
+  subscriptionId: string;
+  quotationLineId: string;
+  customerId: string;
+  cancellationType: 'IMMEDIATE' | 'END_OF_CYCLE';
+  refundAmount: number;         // 0 if end-of-cycle
+  creditNoteId?: string;        // If refund was issued
+  cancelledBy: {
+    id: string;
+    type: 'INTERNAL' | 'CUSTOMER';
+  };
+  cancelledAt: Date;
+  effectiveDate: Date;          // When subscription actually ends
+  reason?: string;
+}
+
+/**
+ * Subscription renewed (billing cycle completed)
+ * Emitted by: Dev A (Billing module, via scheduled job)
+ * Listened by: Dashboard for metrics
+ */
+export interface SubscriptionRenewedEvent {
+  subscriptionId: string;
+  quotationLineId: string;
+  customerId: string;
+  cycleNumber: number;
+  amount: number;
+  billingScheduleId: string;
+  renewedAt: Date;
+  nextDueDate: Date;
+}
+
+/**
+ * Credit note issued
+ * Emitted by: Dev A (Billing module)
+ * Listened by: Portal for customer notification, Dashboard for tracking
+ */
+export interface CreditNoteIssuedEvent {
+  creditNoteId: string;
+  creditNoteNumber: string;
+  invoiceId: string;
+  customerId: string;
+  amount: number;
+  reason: string;
+  issuedAt: Date;
 }
 
 /**
@@ -180,9 +300,18 @@ export interface DealEventMap {
   'fulfillment.completed': FulfillmentCompletedEvent;
   'backorder.ready': BackorderReadyEvent;
   
-  // Billing events
+  // Invoice events (Screens 12-13)
   'invoice.generated': InvoiceGeneratedEvent;
+  'invoice.sent': InvoiceSentEvent;
+  'invoice.statusChanged': InvoiceStatusChangedEvent;
   'payment.received': PaymentReceivedEvent;
+  'creditNote.issued': CreditNoteIssuedEvent;
+  
+  // Subscription events (Screens 9-10)
+  'subscription.created': SubscriptionCreatedEvent;
+  'subscription.modified': SubscriptionModifiedEvent;
+  'subscription.cancelled': SubscriptionCancelledEvent;
+  'subscription.renewed': SubscriptionRenewedEvent;
   
   // Portal events
   'portal.counterDiscount': CustomerCounterDiscountEvent;
