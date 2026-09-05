@@ -114,7 +114,7 @@ export default function FulfillmentPage() {
           <AlertIcon className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-medium text-red-900">{error}</p>
-            <button onClick={fetchQuotations} className="text-sm text-red-700 hover:text-red-800 underline mt-1">
+            <button onClick={() => fetchQuotations()} className="text-sm text-red-700 hover:text-red-800 underline mt-1">
               Try again
             </button>
           </div>
