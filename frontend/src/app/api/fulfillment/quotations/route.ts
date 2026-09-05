@@ -4,6 +4,8 @@ import { getSession } from '@/lib/auth';
 import { ActorType } from '@/lib/types';
 import { calculateWarehouseSplit } from '@/lib/services';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
