@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "DealFlow360 Backend API Server",
   "main": "dist/index.js",
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
