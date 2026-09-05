@@ -108,12 +108,38 @@ export const updateCustomerSchema = createCustomerSchema.partial().extend({
 export const createQuotationSchema = z.object({
   customerId: z.string().cuid('Invalid customer ID'),
   notes: z.string().optional(),
-  validUntil: z.string().datetime().optional(),
+  // Accept both date-only (YYYY-MM-DD) and full ISO datetime strings
+  validUntil: z.string().refine(
+    (val) => {
+      // Accept date-only format (YYYY-MM-DD) or full ISO datetime
+      const dateOnlyRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (dateOnlyRegex.test(val)) {
+        const date = new Date(val);
+        return !isNaN(date.getTime());
+      }
+      // Try parsing as ISO datetime
+      const date = new Date(val);
+      return !isNaN(date.getTime());
+    },
+    { message: 'Invalid date format. Use YYYY-MM-DD or ISO datetime.' }
+  ).optional(),
 });
 
 export const updateQuotationSchema = z.object({
   notes: z.string().optional(),
-  validUntil: z.string().datetime().optional(),
+  // Accept both date-only (YYYY-MM-DD) and full ISO datetime strings
+  validUntil: z.string().refine(
+    (val) => {
+      const dateOnlyRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (dateOnlyRegex.test(val)) {
+        const date = new Date(val);
+        return !isNaN(date.getTime());
+      }
+      const date = new Date(val);
+      return !isNaN(date.getTime());
+    },
+    { message: 'Invalid date format. Use YYYY-MM-DD or ISO datetime.' }
+  ).optional(),
 });
 
 // ===========================================

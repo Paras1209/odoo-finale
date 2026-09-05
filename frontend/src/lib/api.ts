@@ -2,8 +2,10 @@
 // DealFlow360 - API Client
 // ===========================================
 // PHASE 0: Base API client for backend communication.
-// TODO: Add token management in Phase 1
+// Includes global loading overlay integration.
 // ===========================================
+
+import { getGlobalLoadingFunctions } from '@/components/providers/LoadingProvider';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
@@ -18,6 +20,16 @@ export interface ApiResponse<T> {
     message: string;
     details?: unknown;
   };
+}
+
+/**
+ * Request options for API calls
+ */
+export interface RequestOptions {
+  /** Custom loading message to display */
+  loadingMessage?: string;
+  /** Whether to show loading overlay (default: true) */
+  showLoading?: boolean;
 }
 
 /**
@@ -62,8 +74,17 @@ class ApiClient {
   private async request<T>(
     method: string,
     endpoint: string,
-    body?: unknown
+    body?: unknown,
+    options: RequestOptions = {}
   ): Promise<ApiResponse<T>> {
+    const { showLoading = true, loadingMessage } = options;
+    const { startLoading, stopLoading } = getGlobalLoadingFunctions();
+    
+    // Start loading overlay
+    if (showLoading && startLoading) {
+      startLoading(loadingMessage);
+    }
+
     const url = `${this.baseUrl}${endpoint}`;
     const token = this.getToken();
 
@@ -101,28 +122,33 @@ class ApiClient {
           message: 'Failed to connect to the server',
         },
       };
+    } finally {
+      // Stop loading overlay
+      if (showLoading && stopLoading) {
+        stopLoading();
+      }
     }
   }
 
   // HTTP methods
-  async get<T>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.request<T>('GET', endpoint);
+  async get<T>(endpoint: string, options?: RequestOptions): Promise<ApiResponse<T>> {
+    return this.request<T>('GET', endpoint, undefined, options);
   }
 
-  async post<T>(endpoint: string, body?: unknown): Promise<ApiResponse<T>> {
-    return this.request<T>('POST', endpoint, body);
+  async post<T>(endpoint: string, body?: unknown, options?: RequestOptions): Promise<ApiResponse<T>> {
+    return this.request<T>('POST', endpoint, body, options);
   }
 
-  async put<T>(endpoint: string, body?: unknown): Promise<ApiResponse<T>> {
-    return this.request<T>('PUT', endpoint, body);
+  async put<T>(endpoint: string, body?: unknown, options?: RequestOptions): Promise<ApiResponse<T>> {
+    return this.request<T>('PUT', endpoint, body, options);
   }
 
-  async patch<T>(endpoint: string, body?: unknown): Promise<ApiResponse<T>> {
-    return this.request<T>('PATCH', endpoint, body);
+  async patch<T>(endpoint: string, body?: unknown, options?: RequestOptions): Promise<ApiResponse<T>> {
+    return this.request<T>('PATCH', endpoint, body, options);
   }
 
-  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.request<T>('DELETE', endpoint);
+  async delete<T>(endpoint: string, options?: RequestOptions): Promise<ApiResponse<T>> {
+    return this.request<T>('DELETE', endpoint, undefined, options);
   }
 }
 

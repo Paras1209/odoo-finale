@@ -1,12 +1,13 @@
 // ===========================================
 // DealFlow360 - Root Layout
 // ===========================================
-// Root layout with session provider
+// Root layout with session provider and global loading overlay
 // ===========================================
 
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { SessionProvider } from '@/components/providers';
+import { SessionProvider, LoadingProvider, LoadingInitializer } from '@/components/providers';
+import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -24,9 +25,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <SessionProvider>
-          {children}
-        </SessionProvider>
+        <LoadingProvider>
+          <LoadingInitializer />
+          <LoadingOverlay />
+          <SessionProvider>
+            {children}
+          </SessionProvider>
+        </LoadingProvider>
       </body>
     </html>
   );
