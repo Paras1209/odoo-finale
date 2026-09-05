@@ -28,7 +28,10 @@ export const paginationSchema = z.object({
     (val) => (val === null || val === '' || val === undefined) ? undefined : val,
     z.coerce.number().int().min(1).max(100).default(20)
   ),
-  sortBy: z.string().optional(),
+  sortBy: z.preprocess(
+    (val) => (val === null || val === '' || val === undefined) ? undefined : val,
+    z.string().optional()
+  ),
   sortOrder: z.preprocess(
     (val) => (val === null || val === '' || val === undefined) ? undefined : val,
     z.enum(['asc', 'desc']).default('desc')
@@ -224,6 +227,54 @@ export const createFulfillmentSplitSchema = z.object({
 export const recordPaymentSchema = z.object({
   amount: z.number().min(0, 'Payment amount must be non-negative'),
   paidAt: z.string().datetime().optional(),
+});
+
+// ===========================================
+// SUBSCRIPTION VALIDATORS
+// ===========================================
+
+export const modifySubscriptionSchema = z.object({
+  newQuantity: z.number().int().min(1, 'Quantity must be at least 1'),
+  effectiveDate: z.string().datetime().optional(),
+});
+
+export const cancelSubscriptionSchema = z.object({
+  reason: z.string().min(1, 'Cancellation reason is required'),
+  effectiveDate: z.string().datetime().optional(),
+});
+
+export const subscriptionFiltersSchema = z.object({
+  status: z.enum(['UPCOMING', 'INVOICED', 'PAID', 'REFUNDED', 'CANCELLED']).optional(),
+  customerId: z.string().cuid().optional(),
+  quotationId: z.string().cuid().optional(),
+  productId: z.string().cuid().optional(),
+  search: z.string().optional(),
+});
+
+// ===========================================
+// INVOICE VALIDATORS
+// ===========================================
+
+export const invoiceFiltersSchema = z.object({
+  status: z.enum(['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLED']).optional(),
+  invoiceType: z.enum(['ONE_TIME', 'RECURRING']).optional(),
+  customerId: z.string().cuid().optional(),
+  quotationId: z.string().cuid().optional(),
+  dateFrom: z.string().datetime().optional(),
+  dateTo: z.string().datetime().optional(),
+  search: z.string().optional(),
+});
+
+export const createInvoiceSchema = z.object({
+  quotationId: z.string().cuid('Invalid quotation ID'),
+  invoiceType: z.enum(['ONE_TIME', 'RECURRING']).default('ONE_TIME'),
+  dueDate: z.string().datetime().optional(),
+});
+
+export const createCreditNoteSchema = z.object({
+  invoiceId: z.string().cuid('Invalid invoice ID'),
+  amount: z.number().min(0.01, 'Amount must be greater than 0'),
+  reason: z.string().min(1, 'Reason is required'),
 });
 
 // ===========================================

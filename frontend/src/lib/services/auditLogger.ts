@@ -29,6 +29,7 @@ export type AuditEntityType =
   | 'WAREHOUSE'
   | 'STOCK_LEVEL'
   | 'FULFILLMENT_SPLIT'
+  | 'SUBSCRIPTION'
   | 'SUBSCRIPTION_PLAN'
   | 'BILLING_SCHEDULE'
   | 'INVOICE'

@@ -171,3 +171,49 @@ export {
   type ReportFilters,
   type SalesReport,
 } from './dashboardService';
+
+// Billing & Subscription Service (M4 - Dev A)
+export {
+  // Subscription Plan functions
+  getSubscriptionPlans,
+  getSubscriptionPlanById,
+  createSubscriptionPlan,
+  updateSubscriptionPlan,
+  // Billing Schedule functions
+  generateBillingSchedule,
+  generateBillingSchedulesForQuotation,
+  getDueBillingSchedules,
+  processDueBillingSchedules,
+  // Subscription queries
+  getSubscriptions,
+  getSubscriptionById,
+  // Proration calculations
+  calculateProration,
+  calculateCancellationRefund,
+  // Subscription modifications
+  modifySubscription,
+  cancelSubscription,
+  // Invoice functions
+  getInvoices,
+  getInvoiceById,
+  generateInvoice,
+  sendInvoice,
+  recordPayment,
+  markInvoiceOverdue,
+  processOverdueInvoices,
+  // Credit note functions
+  getCreditNotes,
+  createCreditNote,
+  issueCreditNote,
+  applyCreditNote,
+  // Billing summary
+  getInvoiceSummary,
+  // Types
+  type SubscriptionFilters,
+  type InvoiceFilters,
+  type BillingScheduleGenerationResult,
+  type ProrationResult,
+  type CancellationResult,
+  type ModificationResult,
+  type InvoiceSummary,
+} from './billingService';
