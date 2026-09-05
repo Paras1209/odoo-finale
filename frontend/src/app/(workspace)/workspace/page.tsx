@@ -1,9 +1,3 @@
-// ===========================================
-// DealFlow360 - Sales Dashboard (Screen 2)
-// ===========================================
-// DEV B's MODULE: Dashboard home with widgets and activity
-// ===========================================
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -92,86 +86,116 @@ export default function WorkspaceDashboard() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-        {error}
+      <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">
+        <p className="font-medium">Error loading dashboard</p>
+        <p className="text-sm mt-1">{error}</p>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Sales Dashboard</h1>
-        <div className="flex gap-3">
-          <Link href="/workspace/deal-health" className="btn-secondary">
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-slate-500 mt-1">Overview of your sales operations</p>
+        </div>
+        <div className="flex gap-2">
+          <Link href="/workspace/deal-health" className="btn-secondary btn-sm">
+            <ActivityIcon />
             Deal Health
           </Link>
-          <Link href="/workspace/reports" className="btn-secondary">
+          <Link href="/workspace/reports" className="btn-secondary btn-sm">
+            <ChartIcon />
             Reports
           </Link>
         </div>
       </div>
 
+      {/* Counter Offer Alert */}
+      {activity.filter(a => a.action === 'COUNTER_DISCOUNT').length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
+              <AlertIcon />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-amber-900">Counter Offers Pending</h3>
+              <p className="text-sm text-amber-700 mt-1">
+                {activity.filter(a => a.action === 'COUNTER_DISCOUNT').length} customer(s) have submitted counter offers on your quotations.
+              </p>
+            </div>
+            <Link href="/workspace/quotations" className="btn-sm bg-amber-600 text-white hover:bg-amber-700">
+              Review
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Primary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Total Quotations"
-          value={summary?.quotations.total.toString() || '0'}
-          subtitle={`${summary?.quotations.draft || 0} drafts`}
-          icon="document"
-          color="blue"
+          label="Total Quotations"
+          value={summary?.quotations.total || 0}
+          subtext={`${summary?.quotations.draft || 0} drafts`}
+          icon={<DocumentIcon />}
+          href="/workspace/quotations"
         />
         <StatCard
-          title="Pending Approvals"
-          value={summary?.approvals.pending.toString() || '0'}
-          subtitle={`${summary?.approvals.approvedToday || 0} approved today`}
-          icon="clock"
-          color="yellow"
+          label="Pending Approvals"
+          value={summary?.approvals.pending || 0}
+          subtext={`${summary?.approvals.approvedToday || 0} approved today`}
+          icon={<ClockIcon />}
+          variant={summary?.approvals.pending ? 'warning' : 'default'}
+          href="/workspace/approvals"
         />
         <StatCard
-          title="This Month Revenue"
+          label="Revenue This Month"
           value={formatCurrency(summary?.revenue.thisMonth || 0)}
-          subtitle={`${(summary?.revenue.growth ?? 0) >= 0 ? '+' : ''}${summary?.revenue.growth ?? 0}% vs last month`}
-          icon="currency"
-          color={(summary?.revenue.growth ?? 0) >= 0 ? 'green' : 'red'}
+          subtext={`${(summary?.revenue.growth ?? 0) >= 0 ? '+' : ''}${summary?.revenue.growth ?? 0}% vs last month`}
+          icon={<CurrencyIcon />}
+          variant={(summary?.revenue.growth ?? 0) >= 0 ? 'success' : 'danger'}
         />
         <StatCard
-          title="Outstanding Invoices"
+          label="Outstanding"
           value={formatCurrency(summary?.invoices.totalOutstanding || 0)}
-          subtitle={`${summary?.invoices.overdue || 0} overdue`}
-          icon="invoice"
-          color={summary?.invoices.overdue ? 'red' : 'gray'}
+          subtext={`${summary?.invoices.overdue || 0} overdue`}
+          icon={<InvoiceIcon />}
+          variant={summary?.invoices.overdue ? 'danger' : 'default'}
+          href="/workspace/invoices"
         />
       </div>
 
-      {/* Secondary Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
-        <MiniStatCard label="Draft" value={summary?.quotations.draft || 0} color="gray" />
-        <MiniStatCard label="Pending Approval" value={summary?.quotations.pendingApproval || 0} color="yellow" />
-        <MiniStatCard label="Approved" value={summary?.quotations.approved || 0} color="green" />
-        <MiniStatCard label="Confirmed" value={summary?.quotations.confirmed || 0} color="blue" />
-        <MiniStatCard label="Fulfilling" value={summary?.fulfillment.processing || 0} color="purple" />
-        <MiniStatCard label="Backorders" value={summary?.fulfillment.backorders || 0} color="red" />
+      {/* Status Pills */}
+      <div className="flex flex-wrap gap-2">
+        <StatusPill label="Draft" value={summary?.quotations.draft || 0} variant="default" />
+        <StatusPill label="Pending Approval" value={summary?.quotations.pendingApproval || 0} variant="warning" />
+        <StatusPill label="Approved" value={summary?.quotations.approved || 0} variant="success" />
+        <StatusPill label="Confirmed" value={summary?.quotations.confirmed || 0} variant="info" />
+        <StatusPill label="Fulfilling" value={summary?.fulfillment.processing || 0} variant="purple" />
+        <StatusPill label="Backorders" value={summary?.fulfillment.backorders || 0} variant="danger" />
       </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Quotation Pipeline */}
-        <div className="lg:col-span-2 bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Quotation Pipeline</h2>
+      {/* Main Content Grid */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Pipeline */}
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-semibold text-slate-900">Quotation Pipeline</h2>
+            <Link href="/workspace/quotations" className="text-sm text-slate-500 hover:text-slate-700">
+              View all
+            </Link>
+          </div>
           {statusBreakdown.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {statusBreakdown.map((item) => (
-                <PipelineBar
+                <PipelineItem
                   key={item.status}
                   label={formatStatus(item.status)}
                   value={item.count}
@@ -181,95 +205,58 @@ export default function WorkspaceDashboard() {
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-sm">No quotations yet</p>
+            <EmptyState message="No quotations yet" />
           )}
         </div>
 
-        {/* Fulfillment Overview */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Fulfillment Status</h2>
-          <div className="space-y-4">
-            <FulfillmentItem
-              label="Pending"
-              value={summary?.fulfillment.pending || 0}
-              color="yellow"
-            />
-            <FulfillmentItem
-              label="Processing"
-              value={summary?.fulfillment.processing || 0}
-              color="blue"
-            />
-            <FulfillmentItem
-              label="Shipped"
-              value={summary?.fulfillment.shipped || 0}
-              color="purple"
-            />
-            <FulfillmentItem
-              label="Backorders"
-              value={summary?.fulfillment.backorders || 0}
-              color="red"
-            />
+        {/* Fulfillment */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-semibold text-slate-900">Fulfillment</h2>
+            <Link href="/workspace/fulfillment" className="text-sm text-slate-500 hover:text-slate-700">
+              View all
+            </Link>
           </div>
-          <Link
-            href="/workspace/fulfillment"
-            className="block mt-4 text-sm text-blue-600 hover:text-blue-800"
-          >
-            View all fulfillments
-          </Link>
+          <div className="space-y-3">
+            <FulfillmentRow label="Pending" value={summary?.fulfillment.pending || 0} color="amber" />
+            <FulfillmentRow label="Processing" value={summary?.fulfillment.processing || 0} color="blue" />
+            <FulfillmentRow label="Shipped" value={summary?.fulfillment.shipped || 0} color="purple" />
+            <FulfillmentRow label="Backorders" value={summary?.fulfillment.backorders || 0} color="red" />
+          </div>
         </div>
       </div>
 
-      {/* Quick Actions + Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+      {/* Quick Actions + Activity */}
+      <div className="grid lg:grid-cols-3 gap-6">
         {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-          <div className="space-y-3">
-            <Link href="/workspace/quotations/new" className="block w-full btn-primary text-center">
-              + New Quotation
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h2>
+          <div className="space-y-2">
+            <Link 
+              href="/workspace/quotations/new" 
+              className="flex items-center gap-3 p-3 rounded-lg bg-slate-900 text-white hover:bg-slate-800 transition-colors"
+            >
+              <PlusIcon />
+              <span className="font-medium">New Quotation</span>
             </Link>
-            <Link href="/workspace/quotations" className="block w-full btn-secondary text-center">
-              View Quotations
-            </Link>
-            <Link href="/workspace/approvals" className="block w-full btn-secondary text-center">
-              Review Approvals ({summary?.approvals.pending || 0})
-            </Link>
-            <Link href="/workspace/catalog" className="block w-full btn-secondary text-center">
-              Manage Catalog
-            </Link>
-            <Link href="/workspace/deal-health" className="block w-full btn-secondary text-center">
-              Check Deal Health
-            </Link>
+            <QuickActionLink href="/workspace/quotations" icon={<DocumentIcon />} label="View Quotations" />
+            <QuickActionLink href="/workspace/approvals" icon={<ClockIcon />} label={`Review Approvals (${summary?.approvals.pending || 0})`} />
+            <QuickActionLink href="/workspace/catalog" icon={<PackageIcon />} label="Manage Catalog" />
+            <QuickActionLink href="/workspace/deal-health" icon={<ActivityIcon />} label="Check Deal Health" />
           </div>
         </div>
 
         {/* Recent Activity */}
-        <div className="lg:col-span-2 bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
-          
-          {/* Counter Offer Alerts */}
-          {activity.filter(a => a.action === 'COUNTER_DISCOUNT').length > 0 && (
-            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <div className="flex items-center gap-2 text-amber-800 font-medium text-sm mb-2">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                Customer Counter Offers Pending Review
-              </div>
-              <p className="text-xs text-amber-700">
-                {activity.filter(a => a.action === 'COUNTER_DISCOUNT').length} customer(s) have submitted counter offers on your quotations.
-              </p>
-            </div>
-          )}
-          
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Recent Activity</h2>
           {activity.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-1">
               {activity.map((item) => (
-                <ActivityItem key={item.id} activity={item} />
+                <ActivityRow key={item.id} activity={item} />
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-sm">No recent activity</p>
+            <EmptyState message="No recent activity" />
           )}
         </div>
       </div>
@@ -277,84 +264,83 @@ export default function WorkspaceDashboard() {
   );
 }
 
-// ===========================================
-// HELPER COMPONENTS
-// ===========================================
-
+// Stat Card Component
 function StatCard({
-  title,
+  label,
   value,
-  subtitle,
+  subtext,
   icon,
-  color,
+  variant = 'default',
+  href,
 }: {
-  title: string;
-  value: string;
-  subtitle: string;
-  icon: string;
-  color: 'blue' | 'green' | 'yellow' | 'red' | 'gray' | 'purple';
+  label: string;
+  value: string | number;
+  subtext: string;
+  icon: React.ReactNode;
+  variant?: 'default' | 'success' | 'warning' | 'danger';
+  href?: string;
 }) {
-  const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    yellow: 'bg-yellow-50 text-yellow-600',
-    red: 'bg-red-50 text-red-600',
-    gray: 'bg-gray-50 text-gray-600',
-    purple: 'bg-purple-50 text-purple-600',
+  const subtextColors = {
+    default: 'text-slate-500',
+    success: 'text-emerald-600',
+    warning: 'text-amber-600',
+    danger: 'text-red-600',
   };
 
-  const iconMap: Record<string, string> = {
-    document: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-    clock: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
-    currency: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-    invoice: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z',
+  const iconBgColors = {
+    default: 'bg-slate-100 text-slate-600',
+    success: 'bg-emerald-50 text-emerald-600',
+    warning: 'bg-amber-50 text-amber-600',
+    danger: 'bg-red-50 text-red-600',
   };
 
-  return (
-    <div className="bg-white rounded-lg shadow p-6">
+  const content = (
+    <div className={`bg-white rounded-xl border border-slate-200 p-4 sm:p-5 ${href ? 'hover:border-slate-300 hover:shadow-sm transition-all cursor-pointer' : ''}`}>
       <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
-          <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-slate-500 truncate">{label}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-slate-900 mt-1 truncate">{value}</p>
+          <p className={`text-sm mt-1 truncate ${subtextColors[variant]}`}>{subtext}</p>
         </div>
-        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={iconMap[icon] || iconMap.document} />
-          </svg>
+        <div className={`p-2.5 rounded-lg ${iconBgColors[variant]} flex-shrink-0`}>
+          {icon}
         </div>
       </div>
     </div>
   );
+
+  return href ? <Link href={href}>{content}</Link> : content;
 }
 
-function MiniStatCard({
+// Status Pill Component
+function StatusPill({
   label,
   value,
-  color,
+  variant,
 }: {
   label: string;
   value: number;
-  color: 'blue' | 'green' | 'yellow' | 'red' | 'gray' | 'purple';
+  variant: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'purple';
 }) {
-  const colorClasses = {
-    blue: 'border-blue-200 bg-blue-50',
-    green: 'border-green-200 bg-green-50',
-    yellow: 'border-yellow-200 bg-yellow-50',
-    red: 'border-red-200 bg-red-50',
-    gray: 'border-gray-200 bg-gray-50',
-    purple: 'border-purple-200 bg-purple-50',
+  const colors = {
+    default: 'bg-slate-100 text-slate-700',
+    success: 'bg-emerald-50 text-emerald-700',
+    warning: 'bg-amber-50 text-amber-700',
+    danger: 'bg-red-50 text-red-700',
+    info: 'bg-blue-50 text-blue-700',
+    purple: 'bg-purple-50 text-purple-700',
   };
 
   return (
-    <div className={`rounded-lg border p-4 ${colorClasses[color]}`}>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      <p className="text-xs text-gray-600 mt-1">{label}</p>
+    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ${colors[variant]}`}>
+      <span className="font-bold">{value}</span>
+      <span>{label}</span>
     </div>
   );
 }
 
-function PipelineBar({
+// Pipeline Item Component
+function PipelineItem({
   label,
   value,
   total,
@@ -369,13 +355,13 @@ function PipelineBar({
 
   return (
     <div>
-      <div className="flex justify-between text-sm mb-1">
-        <span className="text-gray-700">{label}</span>
-        <span className="font-medium">{value}</span>
+      <div className="flex justify-between text-sm mb-1.5">
+        <span className="text-slate-600">{label}</span>
+        <span className="font-semibold text-slate-900">{value}</span>
       </div>
-      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
         <div
-          className={`h-full ${color} transition-all duration-300`}
+          className={`h-full ${color} rounded-full transition-all duration-500`}
           style={{ width: `${percentage}%` }}
         />
       </div>
@@ -383,59 +369,81 @@ function PipelineBar({
   );
 }
 
-function FulfillmentItem({
+// Fulfillment Row Component
+function FulfillmentRow({
   label,
   value,
   color,
 }: {
   label: string;
   value: number;
-  color: 'blue' | 'green' | 'yellow' | 'red' | 'purple';
+  color: 'amber' | 'blue' | 'purple' | 'red';
 }) {
   const dotColors = {
+    amber: 'bg-amber-500',
     blue: 'bg-blue-500',
-    green: 'bg-green-500',
-    yellow: 'bg-yellow-500',
-    red: 'bg-red-500',
     purple: 'bg-purple-500',
+    red: 'bg-red-500',
   };
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between py-2">
       <div className="flex items-center gap-2">
-        <div className={`w-3 h-3 rounded-full ${dotColors[color]}`} />
-        <span className="text-sm text-gray-700">{label}</span>
+        <div className={`w-2 h-2 rounded-full ${dotColors[color]}`} />
+        <span className="text-sm text-slate-600">{label}</span>
       </div>
-      <span className="font-semibold">{value}</span>
+      <span className="font-semibold text-slate-900">{value}</span>
     </div>
   );
 }
 
-function ActivityItem({ activity }: { activity: RecentActivity }) {
+// Quick Action Link Component
+function QuickActionLink({
+  href,
+  icon,
+  label,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <Link 
+      href={href}
+      className="flex items-center gap-3 p-3 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+    >
+      <span className="text-slate-400">{icon}</span>
+      <span className="text-sm font-medium">{label}</span>
+    </Link>
+  );
+}
+
+// Activity Row Component
+function ActivityRow({ activity }: { activity: RecentActivity }) {
   const timeAgo = getTimeAgo(activity.createdAt);
-  
-  // Determine if this is a counter offer (important for sales reps)
   const isCounterOffer = activity.action === 'COUNTER_DISCOUNT';
   const isCustomerAction = activity.actorType === 'CUSTOMER';
 
   return (
-    <div className={`flex items-start gap-3 py-2 border-b border-gray-100 last:border-0 ${isCounterOffer ? 'bg-amber-50 -mx-2 px-2 rounded' : ''}`}>
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
-        isCounterOffer 
+    <div className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${isCounterOffer ? 'bg-amber-50' : 'hover:bg-slate-50'}`}>
+      <div className={`
+        w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0
+        ${isCounterOffer 
           ? 'bg-amber-200 text-amber-800' 
           : isCustomerAction 
             ? 'bg-blue-100 text-blue-600' 
-            : 'bg-gray-100 text-gray-600'
-      }`}>
+            : 'bg-slate-100 text-slate-600'
+        }
+      `}>
         {isCounterOffer ? '!' : activity.actorName.charAt(0).toUpperCase()}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-900">
+        <p className="text-sm text-slate-900">
           <span className="font-medium">{activity.actorName}</span>{' '}
-          {activity.description}
+          <span className="text-slate-600">{activity.description}</span>
         </p>
         <div className="flex items-center gap-2 mt-0.5">
-          <p className="text-xs text-gray-500">{timeAgo}</p>
+          <span className="text-xs text-slate-400">{timeAgo}</span>
           {isCounterOffer && activity.entityId && (
             <Link 
               href={`/workspace/quotations/${activity.entityId}`}
@@ -450,10 +458,60 @@ function ActivityItem({ activity }: { activity: RecentActivity }) {
   );
 }
 
-// ===========================================
-// HELPER FUNCTIONS
-// ===========================================
+// Empty State Component
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="py-8 text-center">
+      <p className="text-sm text-slate-400">{message}</p>
+    </div>
+  );
+}
 
+// Dashboard Skeleton
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="flex justify-between">
+        <div>
+          <div className="h-8 w-32 bg-slate-200 rounded" />
+          <div className="h-4 w-48 bg-slate-100 rounded mt-2" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="bg-white rounded-xl border border-slate-200 p-5">
+            <div className="h-4 w-24 bg-slate-100 rounded mb-3" />
+            <div className="h-8 w-20 bg-slate-200 rounded mb-2" />
+            <div className="h-3 w-32 bg-slate-100 rounded" />
+          </div>
+        ))}
+      </div>
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
+          <div className="h-6 w-40 bg-slate-200 rounded mb-5" />
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i}>
+                <div className="h-4 w-full bg-slate-100 rounded mb-2" />
+                <div className="h-2 w-full bg-slate-50 rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="h-6 w-32 bg-slate-200 rounded mb-5" />
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-10 bg-slate-50 rounded" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Helper functions
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -472,17 +530,17 @@ function formatStatus(status: string): string {
 
 function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
-    DRAFT: 'bg-gray-400',
-    PENDING_MANAGER_APPROVAL: 'bg-yellow-400',
+    DRAFT: 'bg-slate-400',
+    PENDING_MANAGER_APPROVAL: 'bg-amber-400',
     PENDING_FINANCE_APPROVAL: 'bg-orange-400',
-    APPROVED: 'bg-green-400',
+    APPROVED: 'bg-blue-400',
     REJECTED: 'bg-red-400',
-    CONFIRMED: 'bg-blue-400',
+    CONFIRMED: 'bg-emerald-400',
     FULFILLING: 'bg-purple-400',
     BILLED: 'bg-indigo-400',
-    CANCELLED: 'bg-gray-300',
+    CANCELLED: 'bg-slate-300',
   };
-  return colors[status] || 'bg-gray-400';
+  return colors[status] || 'bg-slate-400';
 }
 
 function getTimeAgo(dateString: string): string {
@@ -495,4 +553,77 @@ function getTimeAgo(dateString: string): string {
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
   return date.toLocaleDateString();
+}
+
+// Icons
+function DocumentIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+function CurrencyIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+function InvoiceIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
+    </svg>
+  );
+}
+
+function ActivityIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h4l3-9 4 18 3-9h4" />
+    </svg>
+  );
+}
+
+function ChartIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13v6a1 1 0 001 1h3a1 1 0 001-1v-6a1 1 0 00-1-1H4a1 1 0 00-1 1zm7-7v13a1 1 0 001 1h3a1 1 0 001-1V6a1 1 0 00-1-1h-3a1 1 0 00-1 1zm7 4v9a1 1 0 001 1h3a1 1 0 001-1v-9a1 1 0 00-1-1h-3a1 1 0 00-1 1z" />
+    </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+    </svg>
+  );
+}
+
+function PackageIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+    </svg>
+  );
 }

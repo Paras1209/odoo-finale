@@ -1,11 +1,7 @@
-// ===========================================
-// DealFlow360 - UI Components Index
-// ===========================================
-// PHASE 0: Export all UI components.
-// ===========================================
+// DealFlow360 - UI Components
 
 export { Button, type ButtonProps } from './Button';
-export { Input, type InputProps } from './Input';
-export { Badge, type BadgeProps } from './Badge';
-export { Card, CardHeader, CardTitle, CardContent, CardFooter, type CardProps } from './Card';
-export { LoadingOverlay } from './LoadingOverlay';
+export { Input, Textarea, Select, SearchInput, type InputProps, type TextareaProps, type SelectProps, type SearchInputProps } from './Input';
+export { Badge, StatusBadge, TierBadge, type BadgeProps, type StatusBadgeProps } from './Badge';
+export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, StatCard, type CardProps } from './Card';
+export { LoadingOverlay, Spinner, PageSkeleton, LoadingPlaceholder } from './LoadingOverlay';

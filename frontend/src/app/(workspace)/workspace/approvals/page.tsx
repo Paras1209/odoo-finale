@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -36,134 +36,301 @@ export default function ApprovalsPage() {
     setLoading(false);
   };
 
-  const getRiskBadgeColor = (score: number | null) => {
-    if (score === null || score === 0) return 'bg-green-100 text-green-800';
-    if (score <= 5) return 'bg-yellow-100 text-yellow-800';
-    if (score <= 10) return 'bg-orange-100 text-orange-800';
-    return 'bg-red-100 text-red-800';
-  };
-
-  const getLevelBadgeColor = (level: string) => {
-    return level === 'MANAGER' 
-      ? 'bg-blue-100 text-blue-800' 
-      : 'bg-purple-100 text-purple-800';
-  };
-
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-      case 'APPROVED': return 'bg-green-100 text-green-800';
-      case 'REJECTED': return 'bg-red-100 text-red-800';
-      case 'RETURNED': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const pendingCount = approvals.filter(a => a.status === 'PENDING').length;
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Pending Approvals</h1>
-        <div className="flex gap-2">
-          <select 
-            className="border p-2 rounded"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="PENDING">Pending</option>
-            <option value="APPROVED">Approved</option>
-            <option value="REJECTED">Rejected</option>
-            <option value="RETURNED">Returned</option>
-          </select>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Pending Approvals</h1>
+          <p className="text-slate-500 mt-1">Review and approve quotations requiring authorization</p>
         </div>
+        <select 
+          className="input text-sm w-full sm:w-auto"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="PENDING">Pending</option>
+          <option value="APPROVED">Approved</option>
+          <option value="REJECTED">Rejected</option>
+          <option value="RETURNED">Returned</option>
+        </select>
       </div>
 
-      <div className="bg-white shadow rounded overflow-hidden">
+      {/* Alert Banner */}
+      {statusFilter === 'PENDING' && pendingCount > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
+              <ClockIcon />
+            </div>
+            <div>
+              <p className="font-medium text-amber-900">
+                {pendingCount} quotation{pendingCount !== 1 ? 's' : ''} awaiting your review
+              </p>
+              <p className="text-sm text-amber-700">Please review and take action on pending approvals</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">
-            <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            Loading approvals...
-          </div>
+          <ListSkeleton />
         ) : approvals.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-lg font-medium">No {statusFilter.toLowerCase()} approvals</p>
-            <p className="text-sm mt-1">
-              {statusFilter === 'PENDING' 
-                ? 'All quotations are either approved or don\'t require approval.'
-                : `No approvals with ${statusFilter.toLowerCase()} status.`}
-            </p>
-          </div>
+          <EmptyState statusFilter={statusFilter} />
         ) : (
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600">Quotation</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600">Customer</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600">Rep</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600 text-right">Amount</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600 text-center">Risk Score</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600 text-center">Level</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600 text-center">Status</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600">Submitted</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <>
+            {/* Desktop Table */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/50">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Quotation</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Customer</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Rep</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Risk</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Level</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {approvals.map((approval) => (
+                    <tr key={approval.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-4 py-3">
+                        <Link href={`/workspace/quotations/${approval.quotationId}`} className="font-medium text-slate-900 hover:text-indigo-600 transition-colors">
+                          {approval.quotationNumber}
+                        </Link>
+                        <p className="text-xs text-slate-500 mt-0.5">{formatDate(approval.createdAt)}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-medium text-slate-900">{approval.customerName}</span>
+                        <TierBadge tier={approval.customerTier} className="ml-2" />
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">{approval.repName}</td>
+                      <td className="px-4 py-3 text-right font-medium text-slate-900">
+                        {formatCurrency(approval.totalAmount)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <RiskBadge score={approval.blendedRiskScore} />
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <LevelBadge level={approval.level} />
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <StatusBadge status={approval.status} />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link href={`/workspace/approvals/${approval.id}`} className="btn-sm btn-primary">
+                          Review
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="lg:hidden divide-y divide-slate-100">
               {approvals.map((approval) => (
-                <tr key={approval.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <Link href={`/workspace/quotations/${approval.quotationId}`} className="text-blue-600 hover:underline font-medium">
-                      {approval.quotationNumber}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
+                <Link 
+                  key={approval.id}
+                  href={`/workspace/approvals/${approval.id}`}
+                  className="block p-4 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-2">
                     <div>
-                      <span className="font-medium">{approval.customerName}</span>
-                      <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
-                        approval.customerTier === 'GOLD' ? 'bg-yellow-100 text-yellow-800' :
-                        approval.customerTier === 'SILVER' ? 'bg-gray-200 text-gray-800' :
-                        'bg-amber-100 text-amber-800'
-                      }`}>
-                        {approval.customerTier}
-                      </span>
+                      <span className="font-medium text-slate-900">{approval.quotationNumber}</span>
+                      <p className="text-sm text-slate-500 mt-0.5">{approval.customerName}</p>
                     </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{approval.repName}</td>
-                  <td className="px-4 py-3 text-right font-medium">${approval.totalAmount.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`px-2 py-1 rounded text-xs font-semibold ${getRiskBadgeColor(approval.blendedRiskScore)}`}>
-                      {approval.blendedRiskScore?.toFixed(1) ?? '0.0'}
+                    <StatusBadge status={approval.status} />
+                  </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <TierBadge tier={approval.customerTier} />
+                    <LevelBadge level={approval.level} />
+                    <RiskBadge score={approval.blendedRiskScore} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold text-slate-900">
+                      {formatCurrency(approval.totalAmount)}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`px-2 py-1 rounded text-xs font-semibold ${getLevelBadgeColor(approval.level)}`}>
-                      {approval.level}
+                    <span className="text-sm text-indigo-600 font-medium flex items-center gap-1">
+                      Review <ChevronRightIcon />
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusBadgeColor(approval.status)}`}>
-                      {approval.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 text-sm">
-                    {new Date(approval.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link 
-                      href={`/workspace/approvals/${approval.id}`} 
-                      className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 inline-block"
-                    >
-                      Review
-                    </Link>
-                  </td>
-                </tr>
+                  </div>
+                </Link>
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50">
+              <p className="text-sm text-slate-500">
+                {approvals.length} approval{approvals.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </>
         )}
       </div>
     </div>
+  );
+}
+
+// Badge Components
+function TierBadge({ tier, className = '' }: { tier: string; className?: string }) {
+  const config: Record<string, string> = {
+    GOLD: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20',
+    SILVER: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500/20',
+    BRONZE: 'bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-600/20',
+  };
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${config[tier] || config.BRONZE} ${className}`}>
+      {tier}
+    </span>
+  );
+}
+
+function RiskBadge({ score }: { score: number | null }) {
+  const value = score ?? 0;
+  let className = 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20';
+  if (value > 10) className = 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20';
+  else if (value > 5) className = 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20';
+  else if (value > 0) className = 'bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-600/20';
+
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${className}`}>
+      {value.toFixed(1)}
+    </span>
+  );
+}
+
+function LevelBadge({ level }: { level: string }) {
+  const className = level === 'MANAGER' 
+    ? 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20'
+    : 'bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-600/20';
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${className}`}>
+      {level}
+    </span>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const config: Record<string, string> = {
+    PENDING: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20',
+    APPROVED: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20',
+    REJECTED: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20',
+    RETURNED: 'bg-slate-100 text-slate-600',
+  };
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${config[status] || config.PENDING}`}>
+      {status}
+    </span>
+  );
+}
+
+function EmptyState({ statusFilter }: { statusFilter: string }) {
+  return (
+    <div className="py-16 text-center">
+      <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+        <CheckIcon className="w-8 h-8 text-slate-400" />
+      </div>
+      <h3 className="text-lg font-medium text-slate-900 mb-1">No {statusFilter.toLowerCase()} approvals</h3>
+      <p className="text-sm text-slate-500 max-w-sm mx-auto">
+        {statusFilter === 'PENDING' 
+          ? "All quotations are either approved or don't require approval."
+          : `No approvals with ${statusFilter.toLowerCase()} status.`}
+      </p>
+    </div>
+  );
+}
+
+function ListSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="hidden lg:block">
+        <div className="border-b border-slate-200 bg-slate-50/50 px-4 py-3">
+          <div className="flex gap-4">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+              <div key={i} className="h-4 bg-slate-200 rounded flex-1" />
+            ))}
+          </div>
+        </div>
+        {[1, 2, 3].map(i => (
+          <div key={i} className="px-4 py-4 border-b border-slate-100">
+            <div className="flex gap-4">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(j => (
+                <div key={j} className="h-4 bg-slate-100 rounded flex-1" />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="lg:hidden divide-y divide-slate-100">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="p-4">
+            <div className="flex justify-between mb-3">
+              <div>
+                <div className="h-4 w-24 bg-slate-200 rounded" />
+                <div className="h-3 w-32 bg-slate-100 rounded mt-2" />
+              </div>
+              <div className="h-5 w-16 bg-slate-100 rounded" />
+            </div>
+            <div className="flex gap-2 mb-3">
+              <div className="h-5 w-12 bg-slate-100 rounded" />
+              <div className="h-5 w-16 bg-slate-100 rounded" />
+              <div className="h-5 w-10 bg-slate-100 rounded" />
+            </div>
+            <div className="h-6 w-24 bg-slate-200 rounded" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Helper functions
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format(amount);
+}
+
+function formatDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+// Icons
+function ClockIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+function CheckIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className || 'w-5 h-5'} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+    </svg>
   );
 }

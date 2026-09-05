@@ -4,10 +4,10 @@
 // DealFlow360 - Invoice Detail Page (Screen 13)
 // ===========================================
 // M4 - Dev A: Invoice detail with payment recording,
-// credit notes, and status management
+// credit notes, PDF preview/download, and status management
 // ===========================================
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { api } from '@/lib/api';
@@ -72,9 +72,23 @@ export default function InvoiceDetailPage() {
   const [creditNoteAmount, setCreditNoteAmount] = useState(0);
   const [creditNoteReason, setCreditNoteReason] = useState('');
 
+  // PDF Preview modal state
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+
   useEffect(() => {
     fetchInvoice();
   }, [params.id]);
+
+  // Cleanup PDF URL on unmount
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+    };
+  }, [pdfUrl]);
 
   const fetchInvoice = async () => {
     setLoading(true);
@@ -159,6 +173,78 @@ export default function InvoiceDetailPage() {
       alert(res.error?.message || 'Failed to issue credit note');
     }
   };
+
+  // PDF Preview handler
+  const handlePreviewPdf = useCallback(async () => {
+    setPdfLoading(true);
+    try {
+      const response = await fetch(`/api/billing/invoices/${params.id}/pdf`, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to load PDF');
+      }
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      
+      // Revoke old URL if exists
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+      
+      setPdfUrl(url);
+      setShowPdfPreview(true);
+    } catch (error) {
+      console.error('Error loading PDF:', error);
+      alert('Failed to load PDF preview');
+    } finally {
+      setPdfLoading(false);
+    }
+  }, [params.id, pdfUrl]);
+
+  // PDF Download handler
+  const handleDownloadPdf = useCallback(async () => {
+    setPdfLoading(true);
+    try {
+      const response = await fetch(`/api/billing/invoices/${params.id}/pdf?download=true`, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to download PDF');
+      }
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      
+      // Create temporary link and trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${invoice?.invoiceNumber || 'invoice'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Cleanup
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Failed to download PDF');
+    } finally {
+      setPdfLoading(false);
+    }
+  }, [params.id, invoice?.invoiceNumber]);
+
+  // Close PDF preview and cleanup
+  const closePdfPreview = useCallback(() => {
+    setShowPdfPreview(false);
+    if (pdfUrl) {
+      URL.revokeObjectURL(pdfUrl);
+      setPdfUrl(null);
+    }
+  }, [pdfUrl]);
 
   const getStatusBadgeClass = (status: string) => {
     switch (status) {

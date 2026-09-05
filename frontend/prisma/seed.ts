@@ -10,8 +10,12 @@ import { PrismaClient } from '@prisma/client';
 import { seedUsers } from './seeds/userSeed.js';
 import { seedCatalog } from './seeds/catalogSeed.js';
 import { seedQuotations } from './seeds/quotationSeed.js';
+import { seedMassiveData } from './seeds/massiveSeed.js';
 
 const prisma = new PrismaClient();
+
+// Check if massive seed is requested via command line argument
+const runMassiveSeed = process.argv.includes('--massive') || process.argv.includes('-m');
 
 async function main() {
   console.log('Starting database seed...\n');
@@ -32,7 +36,17 @@ async function main() {
     await seedQuotations(prisma);
     console.log('Quotation config seeded successfully\n');
 
+    // 4. Run massive seed if requested (250+ entries per table)
+    if (runMassiveSeed) {
+      console.log('--- Running Massive Data Seed (250+ per table) ---');
+      await seedMassiveData(prisma);
+      console.log('Massive data seed completed successfully\n');
+    }
+
     console.log('Database seed completed successfully!');
+    if (!runMassiveSeed) {
+      console.log('TIP: Run with --massive or -m flag to seed 250+ entries per table');
+    }
   } catch (error) {
     console.error('Seed error:', error);
     throw error;

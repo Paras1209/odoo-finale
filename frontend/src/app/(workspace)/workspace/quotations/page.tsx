@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -15,10 +15,21 @@ interface Quotation {
   createdAt: string;
 }
 
+const statusOptions = [
+  { value: '', label: 'All Statuses' },
+  { value: 'DRAFT', label: 'Draft' },
+  { value: 'PENDING_MANAGER_APPROVAL', label: 'Pending Manager' },
+  { value: 'PENDING_FINANCE_APPROVAL', label: 'Pending Finance' },
+  { value: 'APPROVED', label: 'Approved' },
+  { value: 'CONFIRMED', label: 'Confirmed' },
+  { value: 'REJECTED', label: 'Rejected' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+];
+
 export default function QuotationsPage() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -46,177 +57,340 @@ export default function QuotationsPage() {
     );
   });
 
-  const getStatusBadgeClass = (status: string) => {
-    switch (status) {
-      case 'DRAFT': return 'bg-gray-200 text-gray-800';
-      case 'PENDING_MANAGER_APPROVAL': return 'bg-yellow-100 text-yellow-800';
-      case 'PENDING_FINANCE_APPROVAL': return 'bg-orange-100 text-orange-800';
-      case 'APPROVED': return 'bg-blue-100 text-blue-800';
-      case 'CONFIRMED': return 'bg-green-100 text-green-800';
-      case 'REJECTED': return 'bg-red-100 text-red-800';
-      case 'CANCELLED': return 'bg-gray-300 text-gray-600';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getTierBadgeClass = (tier: string) => {
-    switch (tier) {
-      case 'GOLD': return 'bg-yellow-100 text-yellow-700';
-      case 'SILVER': return 'bg-gray-200 text-gray-700';
-      case 'BRONZE': return 'bg-amber-100 text-amber-700';
-      default: return 'bg-gray-100 text-gray-700';
-    }
-  };
-
-  const formatStatus = (status: string) => {
-    return status.replace(/_/g, ' ');
-  };
-
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Quotations</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage customer quotations and track their status</p>
+          <h1 className="text-2xl font-bold text-slate-900">Quotations</h1>
+          <p className="text-slate-500 mt-1">Manage customer quotations and track their status</p>
         </div>
-        <Link 
-          href="/workspace/quotations/new"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
+        <Link href="/workspace/quotations/new" className="btn-primary">
+          <PlusIcon />
           New Quotation
         </Link>
       </div>
 
       {/* Filters */}
-      <div className="mb-6 p-4 bg-white shadow rounded-lg">
-        <div className="flex gap-4">
+      <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Search */}
           <div className="flex-1 relative">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="Search by quote number or customer..."
-              className="w-full border rounded-lg pl-10 pr-4 py-2"
+              className="input pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <svg className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
           </div>
+          {/* Status Filter */}
           <select 
-            className="border rounded-lg px-4 py-2 min-w-[180px]"
+            className="select min-w-[180px]"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
-            <option value="">All Statuses</option>
-            <option value="DRAFT">Draft</option>
-            <option value="PENDING_MANAGER_APPROVAL">Pending Manager</option>
-            <option value="PENDING_FINANCE_APPROVAL">Pending Finance</option>
-            <option value="APPROVED">Approved</option>
-            <option value="CONFIRMED">Confirmed</option>
-            <option value="REJECTED">Rejected</option>
-            <option value="CANCELLED">Cancelled</option>
+            {statusOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
       </div>
 
-      {/* Quotations Table */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      {/* Content */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading quotations...</p>
-          </div>
+          <TableSkeleton />
         ) : filteredQuotations.length === 0 ? (
-          <div className="p-8 text-center">
-            <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <p className="text-gray-500 text-lg font-medium">
-              {searchQuery || statusFilter ? 'No quotations match your criteria' : 'No quotations yet'}
-            </p>
-            <p className="text-gray-400 text-sm mt-1">
-              {!searchQuery && !statusFilter && (
-                <Link href="/workspace/quotations/new" className="text-blue-600 hover:underline">
-                  Create your first quotation
-                </Link>
-              )}
-            </p>
-          </div>
+          <EmptyState 
+            hasFilters={!!searchQuery || !!statusFilter}
+          />
         ) : (
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600">Quote #</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600">Customer</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600 text-right">Amount</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600 text-center">Risk</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600 text-center">Status</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600">Created</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {filteredQuotations.map(q => (
-                <tr key={q.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <Link href={`/workspace/quotations/${q.id}`} className="text-blue-600 hover:underline font-medium">
-                      {q.quotationNumber}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{q.customerName}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getTierBadgeClass(q.customerTier)}`}>
-                        {q.customerTier}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right font-medium">${q.totalAmount.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-center">
-                    {q.blendedRiskScore !== null && q.blendedRiskScore > 0 ? (
-                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                        q.blendedRiskScore <= 5 ? 'bg-yellow-100 text-yellow-800' :
-                        q.blendedRiskScore <= 10 ? 'bg-orange-100 text-orange-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {q.blendedRiskScore.toFixed(1)}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusBadgeClass(q.status)}`}>
-                      {formatStatus(q.status)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 text-sm">
-                    {new Date(q.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link 
-                      href={`/workspace/quotations/${q.id}`} 
-                      className="px-3 py-1.5 text-blue-600 hover:bg-blue-50 text-sm rounded border border-blue-200"
-                    >
-                      {q.status === 'DRAFT' ? 'Edit' : 'View'}
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/50">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Quote #</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Customer</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Risk</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Created</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredQuotations.map(q => (
+                    <tr key={q.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-4 py-3">
+                        <Link 
+                          href={`/workspace/quotations/${q.id}`} 
+                          className="font-medium text-slate-900 hover:text-indigo-600 transition-colors"
+                        >
+                          {q.quotationNumber}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-700">{q.customerName}</span>
+                          <TierBadge tier={q.customerTier} />
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-slate-900">
+                        {formatCurrency(q.totalAmount)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <RiskIndicator score={q.blendedRiskScore} />
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <StatusBadge status={q.status} />
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-500">
+                        {formatDate(q.createdAt)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link 
+                          href={`/workspace/quotations/${q.id}`}
+                          className="btn-secondary btn-sm"
+                        >
+                          {q.status === 'DRAFT' ? 'Edit' : 'View'}
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-        {/* Footer */}
-        {filteredQuotations.length > 0 && (
-          <div className="px-4 py-3 border-t bg-gray-50 text-sm text-gray-500">
-            Showing {filteredQuotations.length} quotation{filteredQuotations.length !== 1 ? 's' : ''}
-          </div>
+            {/* Mobile Cards */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {filteredQuotations.map(q => (
+                <Link 
+                  key={q.id}
+                  href={`/workspace/quotations/${q.id}`}
+                  className="block p-4 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <span className="font-medium text-slate-900">{q.quotationNumber}</span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-sm text-slate-600">{q.customerName}</span>
+                        <TierBadge tier={q.customerTier} />
+                      </div>
+                    </div>
+                    <StatusBadge status={q.status} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold text-slate-900">
+                      {formatCurrency(q.totalAmount)}
+                    </span>
+                    <div className="flex items-center gap-3 text-sm text-slate-500">
+                      <RiskIndicator score={q.blendedRiskScore} compact />
+                      <span>{formatDate(q.createdAt)}</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50">
+              <p className="text-sm text-slate-500">
+                {filteredQuotations.length} quotation{filteredQuotations.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </>
         )}
       </div>
     </div>
+  );
+}
+
+// Status Badge Component
+function StatusBadge({ status }: { status: string }) {
+  const config: Record<string, { label: string; className: string }> = {
+    DRAFT: { label: 'Draft', className: 'bg-slate-100 text-slate-700' },
+    PENDING_MANAGER_APPROVAL: { label: 'Pending Manager', className: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20' },
+    PENDING_FINANCE_APPROVAL: { label: 'Pending Finance', className: 'bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-600/20' },
+    APPROVED: { label: 'Approved', className: 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20' },
+    CONFIRMED: { label: 'Confirmed', className: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20' },
+    REJECTED: { label: 'Rejected', className: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20' },
+    CANCELLED: { label: 'Cancelled', className: 'bg-slate-100 text-slate-500' },
+  };
+
+  const { label, className } = config[status] || { label: status, className: 'bg-slate-100 text-slate-700' };
+
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${className}`}>
+      {label}
+    </span>
+  );
+}
+
+// Tier Badge Component
+function TierBadge({ tier }: { tier: string }) {
+  const colors: Record<string, string> = {
+    GOLD: 'bg-amber-100 text-amber-800',
+    SILVER: 'bg-slate-200 text-slate-700',
+    BRONZE: 'bg-orange-100 text-orange-800',
+  };
+
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${colors[tier] || 'bg-slate-100 text-slate-700'}`}>
+      {tier}
+    </span>
+  );
+}
+
+// Risk Indicator Component
+function RiskIndicator({ score, compact = false }: { score: number | null; compact?: boolean }) {
+  if (score === null || score === 0) {
+    return compact ? null : <span className="text-slate-400">-</span>;
+  }
+
+  const getColor = () => {
+    if (score <= 5) return 'bg-amber-100 text-amber-800';
+    if (score <= 10) return 'bg-orange-100 text-orange-800';
+    return 'bg-red-100 text-red-800';
+  };
+
+  if (compact) {
+    return (
+      <span className={`inline-flex items-center gap-1 text-xs ${score > 5 ? 'text-orange-600' : 'text-amber-600'}`}>
+        <AlertTriangleIcon />
+        {score.toFixed(1)}
+      </span>
+    );
+  }
+
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${getColor()}`}>
+      {score.toFixed(1)}
+    </span>
+  );
+}
+
+// Empty State Component
+function EmptyState({ hasFilters }: { hasFilters: boolean }) {
+  return (
+    <div className="py-16 text-center">
+      <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+        <DocumentIcon className="w-8 h-8 text-slate-400" />
+      </div>
+      <h3 className="text-lg font-medium text-slate-900 mb-1">
+        {hasFilters ? 'No quotations match your criteria' : 'No quotations yet'}
+      </h3>
+      <p className="text-sm text-slate-500 mb-6">
+        {hasFilters 
+          ? 'Try adjusting your search or filters' 
+          : 'Create your first quotation to get started'
+        }
+      </p>
+      {!hasFilters && (
+        <Link href="/workspace/quotations/new" className="btn-primary">
+          <PlusIcon />
+          Create Quotation
+        </Link>
+      )}
+    </div>
+  );
+}
+
+// Table Skeleton Component
+function TableSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="hidden md:block">
+        <div className="border-b border-slate-200 bg-slate-50/50 px-4 py-3">
+          <div className="flex gap-4">
+            {[1, 2, 3, 4, 5, 6, 7].map(i => (
+              <div key={i} className="h-4 bg-slate-200 rounded flex-1" />
+            ))}
+          </div>
+        </div>
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="px-4 py-4 border-b border-slate-100">
+            <div className="flex gap-4">
+              {[1, 2, 3, 4, 5, 6, 7].map(j => (
+                <div key={j} className="h-4 bg-slate-100 rounded flex-1" />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="md:hidden divide-y divide-slate-100">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="p-4">
+            <div className="flex justify-between mb-3">
+              <div className="space-y-2">
+                <div className="h-4 w-24 bg-slate-200 rounded" />
+                <div className="h-3 w-32 bg-slate-100 rounded" />
+              </div>
+              <div className="h-5 w-20 bg-slate-100 rounded" />
+            </div>
+            <div className="flex justify-between">
+              <div className="h-6 w-24 bg-slate-200 rounded" />
+              <div className="h-4 w-20 bg-slate-100 rounded" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Helper functions
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+// Icons
+function PlusIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+    </svg>
+  );
+}
+
+function SearchIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={`w-4 h-4 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  );
+}
+
+function DocumentIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={`${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  );
+}
+
+function AlertTriangleIcon() {
+  return (
+    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+    </svg>
   );
 }
