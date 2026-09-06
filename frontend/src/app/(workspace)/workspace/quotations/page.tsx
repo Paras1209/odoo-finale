@@ -54,10 +54,12 @@ export default function QuotationsPage() {
     if (statusFilter) params.append('status', statusFilter);
     
     const res = await api.get<any>(`/quotation?${params.toString()}`);
-    if (res.success && res.data) {
-      setQuotations(res.data.data || res.data);
-      if (res.data.pagination) {
-        setPagination(res.data.pagination);
+    if (res.success) {
+      // API returns { success, data: [...], pagination: {...} }
+      setQuotations(res.data || []);
+      // Pagination is at root level of response
+      if ((res as any).pagination) {
+        setPagination((res as any).pagination);
       }
     }
     setLoading(false);
@@ -252,7 +254,7 @@ export default function QuotationsPage() {
             ) : (
               <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50">
                 <p className="text-sm text-slate-500">
-                  {filteredQuotations.length} quotation{filteredQuotations.length !== 1 ? 's' : ''}
+                  {pagination ? `Showing all ${pagination.totalItems} quotation${pagination.totalItems !== 1 ? 's' : ''}` : `${filteredQuotations.length} quotation${filteredQuotations.length !== 1 ? 's' : ''}`}
                 </p>
               </div>
             )}

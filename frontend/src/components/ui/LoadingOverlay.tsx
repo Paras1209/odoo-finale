@@ -4,9 +4,10 @@ import { useLoading } from '@/components/providers/LoadingProvider';
 import { cn } from '@/lib/utils';
 
 export function LoadingOverlay() {
-  const { isLoading, loadingMessage } = useLoading();
+  const { isLoading, loadingMessage, isGlobalLoaderSuppressed } = useLoading();
 
-  if (!isLoading) return null;
+  // Don't render if not loading or if a page has its own loader
+  if (!isLoading || isGlobalLoaderSuppressed) return null;
 
   return (
     <div 

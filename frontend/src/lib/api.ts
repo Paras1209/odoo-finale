@@ -28,7 +28,7 @@ export interface ApiResponse<T> {
 export interface RequestOptions {
   /** Custom loading message to display */
   loadingMessage?: string;
-  /** Whether to show loading overlay (default: true) */
+  /** Whether to show loading overlay (default: false - pages handle their own loading) */
   showLoading?: boolean;
 }
 
@@ -77,7 +77,7 @@ class ApiClient {
     body?: unknown,
     options: RequestOptions = {}
   ): Promise<ApiResponse<T>> {
-    const { showLoading = true, loadingMessage } = options;
+    const { showLoading = false, loadingMessage } = options;
     const { startLoading, stopLoading } = getGlobalLoadingFunctions();
     
     // Start loading overlay

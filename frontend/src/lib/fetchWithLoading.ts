@@ -10,7 +10,7 @@ import { getGlobalLoadingFunctions } from '@/components/providers/LoadingProvide
 export interface FetchWithLoadingOptions extends RequestInit {
   /** Custom loading message to display */
   loadingMessage?: string;
-  /** Whether to show loading overlay (default: true) */
+  /** Whether to show loading overlay (default: false - pages handle their own loading) */
   showLoading?: boolean;
 }
 
@@ -21,7 +21,7 @@ export async function fetchWithLoading(
   url: string,
   options: FetchWithLoadingOptions = {}
 ): Promise<Response> {
-  const { showLoading = true, loadingMessage, ...fetchOptions } = options;
+  const { showLoading = false, loadingMessage, ...fetchOptions } = options;
   const { startLoading, stopLoading } = getGlobalLoadingFunctions();
 
   // Start loading overlay

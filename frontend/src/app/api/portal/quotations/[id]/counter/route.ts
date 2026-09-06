@@ -37,13 +37,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Can only counter APPROVED quotations or quotations where sales rep has countered back
+    // Can only counter APPROVED quotations when no pending counter, or sales rep has countered/rejected
     const canCounter = quotation.status === 'APPROVED' && 
-      (quotation.counterOfferStatus === null || quotation.counterOfferStatus === 'COUNTERED');
+      (quotation.counterOfferStatus === null || quotation.counterOfferStatus === 'COUNTERED' || quotation.counterOfferStatus === 'REJECTED');
     
     if (!canCounter) {
       return NextResponse.json(
-        { success: false, error: { code: 'INVALID_STATE', message: 'Can only counter APPROVED quotations' } },
+        { success: false, error: { code: 'INVALID_STATE', message: 'Cannot submit counter offer in current state' } },
         { status: 400 }
       );
     }

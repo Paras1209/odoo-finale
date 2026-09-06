@@ -36,6 +36,13 @@ interface Pagination {
   totalPages: number;
 }
 
+interface RoleCounts {
+  SALES_REP: number;
+  SALES_MANAGER: number;
+  FINANCE_OPS: number;
+  ADMIN: number;
+}
+
 const INITIAL_FORM: UserFormData = {
   name: '',
   email: '',
@@ -65,6 +72,12 @@ export default function AdminUsersPage() {
     pageSize: 10,
     total: 0,
     totalPages: 0,
+  });
+  const [roleCounts, setRoleCounts] = useState<RoleCounts>({
+    SALES_REP: 0,
+    SALES_MANAGER: 0,
+    FINANCE_OPS: 0,
+    ADMIN: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -108,6 +121,9 @@ export default function AdminUsersPage() {
 
       setUsers(result.data);
       setPagination(result.pagination);
+      if (result.roleCounts) {
+        setRoleCounts(result.roleCounts);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -296,7 +312,7 @@ export default function AdminUsersPage() {
       {/* Role Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         {(['SALES_REP', 'SALES_MANAGER', 'FINANCE_OPS', 'ADMIN'] as UserRole[]).map((role) => {
-          const count = users.filter((u) => u.role === role && u.isActive).length;
+          const count = roleCounts[role];
           return (
             <Card
               key={role}

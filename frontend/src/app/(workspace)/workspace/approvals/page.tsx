@@ -45,10 +45,12 @@ export default function ApprovalsPage() {
     params.append('status', statusFilter);
     
     const res = await api.get<any>(`/approval?${params.toString()}`);
-    if (res.success && res.data) {
-      setApprovals(res.data.data || res.data);
-      if (res.data.pagination) {
-        setPagination(res.data.pagination);
+    if (res.success) {
+      // API returns { success, data: [...], pagination: {...} }
+      setApprovals(res.data || []);
+      // Pagination is at root level of response
+      if ((res as any).pagination) {
+        setPagination((res as any).pagination);
       }
     }
     setLoading(false);
@@ -224,7 +226,7 @@ export default function ApprovalsPage() {
             ) : (
               <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50">
                 <p className="text-sm text-slate-500">
-                  {approvals.length} approval{approvals.length !== 1 ? 's' : ''}
+                  {pagination ? `Showing all ${pagination.totalItems} approval${pagination.totalItems !== 1 ? 's' : ''}` : `${approvals.length} approval${approvals.length !== 1 ? 's' : ''}`}
                 </p>
               </div>
             )}

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
-import { ActorType, CounterOfferStatus, UserRole } from '@/lib/types';
-import { dealEvents, auditLogger } from '@/lib/services';
+import { ActorType, CounterOfferStatus, UserRole, QuotationStatus } from '@/lib/types';
+import { dealEvents, auditLogger, registerBillingEventHandlers } from '@/lib/services';
 import { Decimal } from '@prisma/client/runtime/library';
+
+// Ensure billing event handlers are registered for quotation.confirmed event
+registerBillingEventHandlers();
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -93,6 +96,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     switch (action) {
       case 'accept':
         // Accept the customer's counter offer - apply their requested discount
+        // Also auto-confirm the quotation since both parties have agreed on terms
         const acceptedDiscountPct = quotation.counteredDiscountPct?.toNumber() ?? 0;
         const acceptedTotalAmount = quotation.counteredTotalAmount?.toNumber() ?? quotation.totalAmount.toNumber();
         
@@ -102,9 +106,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           // Update the actual quotation values to match the accepted counter offer
           overallDiscountPct: new Decimal(acceptedDiscountPct),
           totalAmount: new Decimal(acceptedTotalAmount),
+          // Auto-confirm: change status to CONFIRMED (converts to order)
+          status: QuotationStatus.CONFIRMED,
         };
         newCounterOfferStatus = CounterOfferStatus.ACCEPTED;
-        responseMessage = `Counter offer accepted. Discount set to ${acceptedDiscountPct}%`;
+        responseMessage = `Counter offer accepted. Discount set to ${acceptedDiscountPct}%. Quotation confirmed as order.`;
         break;
 
       case 'reject':
@@ -167,6 +173,28 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       respondedAt: new Date(),
     });
 
+    // If accepting counter offer, also emit quotation.confirmed event to trigger
+    // fulfillment and billing workflows (same as when customer confirms quotation)
+    if (action === 'accept') {
+      dealEvents.emit('quotation.confirmed', {
+        quotationId: id,
+        quotation: quotation as any,
+        lines: quotation.lines as any,
+        customerId: quotation.customerId,
+        confirmedBy: { id: session.user.id, type: ActorType.INTERNAL },
+        confirmedAt: new Date(),
+      });
+
+      // Emit status change event
+      dealEvents.emit('quotation.statusChanged', {
+        quotationId: id,
+        previousStatus: quotation.status,
+        newStatus: QuotationStatus.CONFIRMED,
+        changedBy: { id: session.user.id, type: ActorType.INTERNAL },
+        changedAt: new Date(),
+      });
+    }
+
     // Audit log
     const auditAction = action === 'accept' ? 'COUNTER_ACCEPT' : 
                         action === 'reject' ? 'COUNTER_REJECT' : 'COUNTER_COUNTER';
@@ -176,7 +204,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       id,
       auditAction,
       quotation.status,
-      quotation.status,
+      action === 'accept' ? QuotationStatus.CONFIRMED : quotation.status,
       commentText
     );
 

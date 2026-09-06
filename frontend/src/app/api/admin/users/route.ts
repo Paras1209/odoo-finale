@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       }),
     };
 
-    const [users, total] = await Promise.all([
+    const [users, total, roleCounts] = await Promise.all([
       prisma.user.findMany({
         where,
         select: {
@@ -79,7 +79,24 @@ export async function GET(request: NextRequest) {
         take: pagination.pageSize,
       }),
       prisma.user.count({ where }),
+      // Get role counts for ALL active users (independent of filters/pagination)
+      prisma.user.groupBy({
+        by: ['role'],
+        where: { isActive: true },
+        _count: { role: true },
+      }),
     ]);
+
+    // Transform role counts into a map
+    const roleCountsMap: Record<string, number> = {
+      SALES_REP: 0,
+      SALES_MANAGER: 0,
+      FINANCE_OPS: 0,
+      ADMIN: 0,
+    };
+    for (const rc of roleCounts) {
+      roleCountsMap[rc.role] = rc._count.role;
+    }
 
     return NextResponse.json({
       success: true,
@@ -100,6 +117,7 @@ export async function GET(request: NextRequest) {
         total,
         totalPages: Math.ceil(total / pagination.pageSize),
       },
+      roleCounts: roleCountsMap,
     });
   } catch (error) {
     console.error('[Admin/Users/List] Error:', error);

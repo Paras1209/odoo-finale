@@ -103,7 +103,7 @@ const counterOfferStatusConfig: Record<string, { label: string; color: string; d
   ACCEPTED: {
     label: 'Accepted',
     color: 'bg-green-100 text-green-800',
-    description: 'Your counter offer was accepted!'
+    description: 'Your counter offer was accepted! The quotation has been confirmed as an order.'
   },
   REJECTED: {
     label: 'Rejected',
@@ -292,9 +292,9 @@ export default function PortalQuotationDetailPage() {
     ? counterOfferStatusConfig[quotation.counterOfferStatus] 
     : null;
   
-  // Can negotiate if approved and no pending counter offer, or if sales rep has countered back
+  // Can negotiate if approved and no pending counter offer, or if sales rep has countered back, or if counter was rejected
   const canNegotiate = quotation.status === 'APPROVED' && 
-    (quotation.counterOfferStatus === null || quotation.counterOfferStatus === 'COUNTERED');
+    (quotation.counterOfferStatus === null || quotation.counterOfferStatus === 'COUNTERED' || quotation.counterOfferStatus === 'REJECTED');
   const hasPendingCounter = quotation.counterOfferStatus === 'PENDING';
   
   // Calculate totals
@@ -539,14 +539,35 @@ export default function PortalQuotationDetailPage() {
                 </div>
               ) : (
                 <div className="text-center py-4">
-                  <p className="text-gray-500">{status.description}</p>
-                  {quotation.status === 'CONFIRMED' && (
-                    <Link 
-                      href="/portal/orders"
-                      className="inline-block mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
-                    >
-                      View Orders &rarr;
-                    </Link>
+                  {quotation.counterOfferStatus === 'ACCEPTED' && quotation.status === 'CONFIRMED' ? (
+                    <>
+                      <div className="text-green-500 text-4xl mb-2">&#10003;</div>
+                      <p className="text-gray-700 font-semibold">Counter Offer Accepted!</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Your negotiated {quotation.overallDiscountPct}% discount was approved.
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Total: {formatCurrency(quotation.totalAmount)}
+                      </p>
+                      <Link 
+                        href="/portal/orders"
+                        className="inline-block mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                      >
+                        View Orders &rarr;
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-gray-500">{status.description}</p>
+                      {quotation.status === 'CONFIRMED' && (
+                        <Link 
+                          href="/portal/orders"
+                          className="inline-block mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                        >
+                          View Orders &rarr;
+                        </Link>
+                      )}
+                    </>
                   )}
                 </div>
               )}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
-import { ActorType, QuotationStatus } from '@/lib/types';
+import { ActorType, QuotationStatus, CounterOfferStatus } from '@/lib/types';
 import { dealEvents, auditLogger, registerBillingEventHandlers } from '@/lib/services';
 
 // Ensure billing event handlers are registered
@@ -47,20 +47,38 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const previousStatus = quotation.status;
 
+    // Build update data - if there's a COUNTERED offer, apply those values
+    const updateData: Record<string, unknown> = {
+      status: QuotationStatus.CONFIRMED,
+      lastActivityAt: new Date(),
+    };
+
+    // If sales rep made a counter offer (COUNTERED), apply those negotiated values
+    if (quotation.counterOfferStatus === CounterOfferStatus.COUNTERED && 
+        quotation.counteredDiscountPct !== null && 
+        quotation.counteredTotalAmount !== null) {
+      updateData.overallDiscountPct = quotation.counteredDiscountPct;
+      updateData.totalAmount = quotation.counteredTotalAmount;
+      updateData.counterOfferStatus = CounterOfferStatus.ACCEPTED; // Mark as accepted
+      updateData.counterOfferRespondedAt = new Date();
+    }
+
     const updated = await prisma.quotation.update({
       where: { id },
-      data: {
-        status: QuotationStatus.CONFIRMED,
-        lastActivityAt: new Date(),
-      }
+      data: updateData,
+      include: {
+        customer: true,
+        lines: { include: { product: true } },
+      },
     });
 
     // Emit event for fulfillment (M3) and billing (M4) modules to handle
+    // Use updated quotation to ensure correct amounts (especially if counter offer was applied)
     dealEvents.emit('quotation.confirmed', {
       quotationId: id,
-      quotation: quotation as any,
-      lines: quotation.lines as any,
-      customerId: quotation.customerId,
+      quotation: updated as any,
+      lines: updated.lines as any,
+      customerId: updated.customerId,
       confirmedBy: { id: session.user.id, type: ActorType.CUSTOMER },
       confirmedAt: new Date(),
     });

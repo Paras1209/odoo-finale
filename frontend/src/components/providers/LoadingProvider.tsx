@@ -2,19 +2,23 @@
 // DealFlow360 - Global Loading Provider
 // ===========================================
 // Context provider for managing global loading state during API calls
+// Pages can suppress the global loader by calling suppressGlobalLoader()
 // ===========================================
 
 'use client';
 
-import { createContext, useContext, useState, useCallback, ReactNode, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useMemo, useEffect } from 'react';
 
 interface LoadingContextType {
   isLoading: boolean;
   loadingMessage: string;
   activeRequests: number;
+  isGlobalLoaderSuppressed: boolean;
   startLoading: (message?: string) => void;
   stopLoading: () => void;
   withLoading: <T>(promise: Promise<T>, message?: string) => Promise<T>;
+  suppressGlobalLoader: () => void;
+  unsuppressGlobalLoader: () => void;
 }
 
 const LoadingContext = createContext<LoadingContextType | undefined>(undefined);
@@ -22,6 +26,7 @@ const LoadingContext = createContext<LoadingContextType | undefined>(undefined);
 export function LoadingProvider({ children }: { children: ReactNode }) {
   const [activeRequests, setActiveRequests] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [isGlobalLoaderSuppressed, setIsGlobalLoaderSuppressed] = useState(false);
 
   const startLoading = useCallback((message?: string) => {
     setActiveRequests((prev) => {
@@ -54,16 +59,27 @@ export function LoadingProvider({ children }: { children: ReactNode }) {
     [startLoading, stopLoading]
   );
 
+  const suppressGlobalLoader = useCallback(() => {
+    setIsGlobalLoaderSuppressed(true);
+  }, []);
+
+  const unsuppressGlobalLoader = useCallback(() => {
+    setIsGlobalLoaderSuppressed(false);
+  }, []);
+
   const value = useMemo(
     () => ({
       isLoading: activeRequests > 0,
       loadingMessage,
       activeRequests,
+      isGlobalLoaderSuppressed,
       startLoading,
       stopLoading,
       withLoading,
+      suppressGlobalLoader,
+      unsuppressGlobalLoader,
     }),
-    [activeRequests, loadingMessage, startLoading, stopLoading, withLoading]
+    [activeRequests, loadingMessage, isGlobalLoaderSuppressed, startLoading, stopLoading, withLoading, suppressGlobalLoader, unsuppressGlobalLoader]
   );
 
   return (
@@ -98,4 +114,25 @@ export function getGlobalLoadingFunctions() {
     startLoading: globalStartLoading,
     stopLoading: globalStopLoading,
   };
+}
+
+/**
+ * Hook for pages that have their own loading UI.
+ * Suppresses the global loader while the component is mounted.
+ * 
+ * Usage:
+ * ```tsx
+ * function MyPage() {
+ *   useSuppressGlobalLoader();
+ *   // ... page with its own loading state
+ * }
+ * ```
+ */
+export function useSuppressGlobalLoader() {
+  const { suppressGlobalLoader, unsuppressGlobalLoader } = useLoading();
+  
+  useEffect(() => {
+    suppressGlobalLoader();
+    return () => unsuppressGlobalLoader();
+  }, [suppressGlobalLoader, unsuppressGlobalLoader]);
 }
