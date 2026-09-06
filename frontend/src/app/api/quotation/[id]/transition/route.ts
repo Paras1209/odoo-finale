@@ -386,6 +386,47 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         });
         break;
 
+      case 'REVISE':
+        // Sales reps can revise APPROVED quotations to make customer-requested changes
+        if (actorType !== ActorType.INTERNAL) {
+          return NextResponse.json(
+            { success: false, error: { code: 'FORBIDDEN', message: 'Only internal users can revise quotations' } },
+            { status: 403 }
+          );
+        }
+
+        if (quotation.status !== 'APPROVED') {
+          return NextResponse.json(
+            { success: false, error: { code: 'INVALID_STATE', message: 'Can only revise APPROVED quotations' } },
+            { status: 400 }
+          );
+        }
+
+        newStatus = QuotationStatus.DRAFT;
+        
+        // Reset counter offer fields since rep is making fresh edits
+        // Note: counterOffer fields were added in migration 20260905221700
+        await prisma.quotation.update({
+          where: { id: quotationId },
+          data: {
+            status: newStatus,
+            // Reset counter offer tracking
+            counterOfferStatus: null,
+            counteredDiscountPct: null,
+            counteredTotalAmount: null,
+            counterOfferAt: null,
+            counterOfferRespondedAt: null,
+            lastActivityAt: new Date(),
+          } as any,  // Type assertion needed until prisma client regenerated
+        });
+
+        // Clear any existing pending approvals since the quotation needs re-evaluation
+        await prisma.approval.updateMany({
+          where: { quotationId, status: 'PENDING' },
+          data: { status: 'RETURNED', approverId: session.user.id, reason: reason || 'Quotation revised for customer changes', actedAt: new Date() },
+        });
+        break;
+
       default:
         return NextResponse.json(
           { success: false, error: { code: 'INVALID_ACTION', message: `Invalid action: ${action}` } },

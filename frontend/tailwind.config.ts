@@ -11,6 +11,7 @@ const config: Config = {
       colors: {
         // DealFlow360 brand colors
         primary: {
+          DEFAULT: '#3525cd',
           50: '#eff6ff',
           100: '#dbeafe',
           200: '#bfdbfe',
@@ -22,7 +23,16 @@ const config: Config = {
           800: '#1e40af',
           900: '#1e3a8a',
           950: '#172554',
+          container: '#4f46e5',
         },
+        secondary: '#00668a',
+        surface: '#ffffff',
+        'surface-canvas': '#FAFCFF',
+        'surface-card': '#FFFFFF',
+        'text-primary': '#090D1A',
+        'text-secondary': '#5E697D',
+        'text-tertiary': '#94A3B8',
+        'border-subtle': '#E8ECF2',
         // Status colors for quotation states
         status: {
           draft: '#6b7280',       // gray-500

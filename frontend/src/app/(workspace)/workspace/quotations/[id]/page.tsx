@@ -254,6 +254,19 @@ export default function QuotationBuilderPage() {
     setTransitioning(false);
   };
 
+  const handleReviseQuotation = async () => {
+    if (!confirm('This will move the quotation back to Draft status so you can make changes. Continue?')) return;
+    setTransitioning(true);
+    const res = await api.post<any>(`/quotation/${id}/transition`, { action: 'REVISE', reason: 'Customer requested changes' });
+    if (res.success) {
+      toast.success('Quotation moved to Draft. You can now make edits.');
+      await fetchQuotation();
+    } else {
+      toast.showApiError(res.error);
+    }
+    setTransitioning(false);
+  };
+
   const handlePostComment = async () => {
     if (!newComment.trim()) return;
     setPostingComment(true);
@@ -310,6 +323,7 @@ export default function QuotationBuilderPage() {
   }
 
   const isDraft = quotation.status === 'DRAFT';
+  const isApproved = quotation.status === 'APPROVED';
   
   // Filter products based on search
   const filteredProducts = products.filter(p => {
@@ -374,6 +388,16 @@ export default function QuotationBuilderPage() {
           >
             {transitioning ? <Spinner /> : <SendIcon />}
             Send to Customer
+          </button>
+        )}
+        {isApproved && !hasPendingCounterOffer && (
+          <button 
+            className="btn-primary btn-lg"
+            onClick={handleReviseQuotation}
+            disabled={transitioning}
+          >
+            {transitioning ? <Spinner /> : <EditIcon />}
+            Revise Quotation
           </button>
         )}
       </div>
@@ -1068,4 +1092,8 @@ function SearchIcon({ className = '' }: { className?: string }) {
 
 function ChevronDownIcon({ className = '' }: { className?: string }) {
   return <svg className={className || 'w-4 h-4'} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>;
+}
+
+function EditIcon() {
+  return <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>;
 }

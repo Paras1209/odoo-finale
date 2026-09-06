@@ -189,7 +189,7 @@ export const approvalActionSchema = z.object({
 });
 
 export const transitionQuotationSchema = z.object({
-  action: z.enum(['CONFIRM', 'APPROVE', 'REJECT', 'RETURN', 'CUSTOMER_COUNTER', 'CANCEL']),
+  action: z.enum(['CONFIRM', 'APPROVE', 'REJECT', 'RETURN', 'CUSTOMER_COUNTER', 'CANCEL', 'REVISE']),
   reason: z.string().optional(),
 });
 

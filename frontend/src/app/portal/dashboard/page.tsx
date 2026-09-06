@@ -246,33 +246,33 @@ export default function PortalDashboard() {
       </div>
 
       {/* Quick Links */}
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-2 gap-3">
         <Link 
           href="/portal/quotations"
-          className="flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-200 hover:border-emerald-300 hover:shadow-sm transition-all"
+          className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 hover:border-emerald-300 hover:shadow-sm transition-all"
         >
-          <div className="p-3 bg-slate-100 rounded-lg text-slate-600">
+          <div className="p-2 bg-slate-100 rounded-md text-slate-600">
             <DocumentIcon />
           </div>
-          <div>
-            <p className="font-medium text-slate-900">View All Quotations</p>
-            <p className="text-sm text-slate-500">Review and manage your quotes</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-slate-900">View All Quotations</p>
+            <p className="text-xs text-slate-500 truncate">Review and manage your quotes</p>
           </div>
-          <ChevronRightIcon className="ml-auto text-slate-400" />
+          <ChevronRightIcon className="w-4 h-4 text-slate-400 flex-shrink-0" />
         </Link>
         
         <Link 
           href="/portal/account"
-          className="flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-200 hover:border-emerald-300 hover:shadow-sm transition-all"
+          className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 hover:border-emerald-300 hover:shadow-sm transition-all"
         >
-          <div className="p-3 bg-slate-100 rounded-lg text-slate-600">
+          <div className="p-2 bg-slate-100 rounded-md text-slate-600">
             <UserIcon />
           </div>
-          <div>
-            <p className="font-medium text-slate-900">Account Settings</p>
-            <p className="text-sm text-slate-500">Manage your profile and preferences</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-slate-900">Account Settings</p>
+            <p className="text-xs text-slate-500 truncate">Manage your profile and preferences</p>
           </div>
-          <ChevronRightIcon className="ml-auto text-slate-400" />
+          <ChevronRightIcon className="w-4 h-4 text-slate-400 flex-shrink-0" />
         </Link>
       </div>
     </div>
