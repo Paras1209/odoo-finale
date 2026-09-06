@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { ActorType, UserRole, ApprovalStatus, ApprovalLevel } from '@/lib/types';
+import { paginationSchema } from '@/lib/validators';
 
 // GET /api/approval - List pending approvals
 export async function GET(request: NextRequest) {
@@ -28,6 +29,16 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    
+    // Parse pagination parameters
+    const paginationInput = {
+      page: searchParams.get('page') ?? undefined,
+      pageSize: searchParams.get('pageSize') ?? undefined,
+      sortBy: searchParams.get('sortBy') ?? undefined,
+      sortOrder: searchParams.get('sortOrder') ?? undefined,
+    };
+    const pagination = paginationSchema.parse(paginationInput);
+    
     const statusParam = searchParams.get('status') || 'PENDING';
     const status = statusParam as ApprovalStatus;
 
@@ -39,22 +50,29 @@ export async function GET(request: NextRequest) {
       levelFilter = { level: ApprovalLevel.FINANCE };
     }
 
-    const approvals = await prisma.approval.findMany({
-      where: {
-        status,
-        ...levelFilter,
-      },
-      include: {
-        quotation: {
-          include: {
-            customer: { select: { id: true, name: true, tier: true } },
-            rep: { select: { id: true, name: true } },
+    const where = {
+      status,
+      ...levelFilter,
+    };
+
+    const [approvals, total] = await Promise.all([
+      prisma.approval.findMany({
+        where,
+        include: {
+          quotation: {
+            include: {
+              customer: { select: { id: true, name: true, tier: true } },
+              rep: { select: { id: true, name: true } },
+            },
           },
+          approver: { select: { id: true, name: true } },
         },
-        approver: { select: { id: true, name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { [pagination.sortBy || 'createdAt']: pagination.sortOrder },
+        skip: (pagination.page - 1) * pagination.pageSize,
+        take: pagination.pageSize,
+      }),
+      prisma.approval.count({ where }),
+    ]);
 
     return NextResponse.json({
       success: true,
@@ -75,6 +93,12 @@ export async function GET(request: NextRequest) {
         actedAt: approval.actedAt?.toISOString() ?? null,
         createdAt: approval.createdAt.toISOString(),
       })),
+      pagination: {
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+        totalItems: total,
+        totalPages: Math.ceil(total / pagination.pageSize),
+      },
     });
   } catch (error) {
     console.error('[Approval/List] Error:', error);

@@ -606,41 +606,96 @@ export async function seedMassiveData(prisma: PrismaClient): Promise<void> {
   const pairingsData: any[] = [];
   const usedPairings = new Set<string>();
   
+  const addPairing = (fromId: string, toId: string, weight: number, isPromoted: boolean) => {
+    const key = `${fromId}-${toId}`;
+    if (fromId !== toId && !usedPairings.has(key)) {
+      usedPairings.add(key);
+      pairingsData.push({
+        id: generateId(),
+        productId: fromId,
+        suggestedProductId: toId,
+        weight,
+        isPromoted,
+      });
+    }
+  };
+  
   // Create pairings between hardware products
   for (let i = 0; i < productsByCategory.HARDWARE.length - 1; i++) {
     const suggestCount = randomInt(2, 4);
     for (let j = 0; j < suggestCount; j++) {
       const suggestedIdx = (i + j + 1) % productsByCategory.HARDWARE.length;
-      if (i !== suggestedIdx) {
-        const key = `${productsByCategory.HARDWARE[i]}-${productsByCategory.HARDWARE[suggestedIdx]}`;
-        if (!usedPairings.has(key)) {
-          usedPairings.add(key);
-          pairingsData.push({
-            id: generateId(),
-            productId: productsByCategory.HARDWARE[i],
-            suggestedProductId: productsByCategory.HARDWARE[suggestedIdx],
-            weight: randomDecimal(0.5, 1.0),
-            isPromoted: Math.random() > 0.7,
-          });
-        }
-      }
+      addPairing(
+        productsByCategory.HARDWARE[i],
+        productsByCategory.HARDWARE[suggestedIdx],
+        randomDecimal(0.5, 1.0),
+        Math.random() > 0.7
+      );
     }
   }
 
-  // Cross-sell: hardware to services
+  // Cross-sell: hardware to services (setup, training, support)
   for (const hwId of productsByCategory.HARDWARE.slice(0, 50)) {
     const svcId = randomChoice(productsByCategory.SERVICE);
-    const key = `${hwId}-${svcId}`;
-    if (!usedPairings.has(key)) {
-      usedPairings.add(key);
-      pairingsData.push({
-        id: generateId(),
-        productId: hwId,
-        suggestedProductId: svcId,
-        weight: randomDecimal(0.6, 0.9),
-        isPromoted: true,
-      });
+    addPairing(hwId, svcId, randomDecimal(0.6, 0.9), true);
+  }
+  
+  // Cross-sell: hardware to subscriptions (warranty, cloud storage, security)
+  for (const hwId of productsByCategory.HARDWARE.slice(0, 50)) {
+    const subId = randomChoice(productsByCategory.SUBSCRIPTION);
+    addPairing(hwId, subId, randomDecimal(0.5, 0.8), Math.random() > 0.5);
+  }
+
+  // Upsell: service to service (basic -> pro, individual -> group training)
+  for (let i = 0; i < productsByCategory.SERVICE.length - 1; i++) {
+    const suggestCount = randomInt(1, 3);
+    for (let j = 0; j < suggestCount; j++) {
+      const suggestedIdx = (i + j + 1) % productsByCategory.SERVICE.length;
+      addPairing(
+        productsByCategory.SERVICE[i],
+        productsByCategory.SERVICE[suggestedIdx],
+        randomDecimal(0.6, 0.95),
+        Math.random() > 0.6
+      );
     }
+  }
+
+  // Cross-sell: service to subscription (setup -> cloud storage, training -> collaboration suite)
+  for (const svcId of productsByCategory.SERVICE.slice(0, 30)) {
+    const subId = randomChoice(productsByCategory.SUBSCRIPTION);
+    addPairing(svcId, subId, randomDecimal(0.5, 0.85), Math.random() > 0.5);
+  }
+  
+  // Cross-sell: service to hardware (installation -> hardware accessories)
+  for (const svcId of productsByCategory.SERVICE.slice(0, 25)) {
+    const hwId = randomChoice(productsByCategory.HARDWARE);
+    addPairing(svcId, hwId, randomDecimal(0.4, 0.7), false);
+  }
+
+  // Upsell: subscription to subscription (basic -> pro -> enterprise tiers)
+  for (let i = 0; i < productsByCategory.SUBSCRIPTION.length - 1; i++) {
+    const suggestCount = randomInt(1, 3);
+    for (let j = 0; j < suggestCount; j++) {
+      const suggestedIdx = (i + j + 1) % productsByCategory.SUBSCRIPTION.length;
+      addPairing(
+        productsByCategory.SUBSCRIPTION[i],
+        productsByCategory.SUBSCRIPTION[suggestedIdx],
+        randomDecimal(0.7, 1.0),
+        true  // Subscription upsells are always promoted
+      );
+    }
+  }
+
+  // Cross-sell: subscription to service (subscription -> support, training)
+  for (const subId of productsByCategory.SUBSCRIPTION.slice(0, 40)) {
+    const svcId = randomChoice(productsByCategory.SERVICE);
+    addPairing(subId, svcId, randomDecimal(0.5, 0.8), Math.random() > 0.5);
+  }
+  
+  // Cross-sell: subscription to hardware (cloud storage -> external drives for backup)
+  for (const subId of productsByCategory.SUBSCRIPTION.slice(0, 25)) {
+    const hwId = randomChoice(productsByCategory.HARDWARE);
+    addPairing(subId, hwId, randomDecimal(0.3, 0.6), false);
   }
   
   await prisma.productPairing.createMany({ data: pairingsData, skipDuplicates: true });

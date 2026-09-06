@@ -15,6 +15,13 @@ interface Quotation {
   createdAt: string;
 }
 
+interface Pagination {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
 const statusOptions = [
   { value: '', label: 'All Statuses' },
   { value: 'DRAFT', label: 'Draft' },
@@ -32,22 +39,35 @@ export default function QuotationsPage() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [pagination, setPagination] = useState<Pagination | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     fetchQuotations();
-  }, [statusFilter]);
+  }, [statusFilter, currentPage]);
 
   const fetchQuotations = async () => {
     if (!hasLoaded) setLoading(true);
     const params = new URLSearchParams();
+    params.append('page', currentPage.toString());
+    params.append('pageSize', '20');
     if (statusFilter) params.append('status', statusFilter);
     
     const res = await api.get<any>(`/quotation?${params.toString()}`);
     if (res.success && res.data) {
       setQuotations(res.data.data || res.data);
+      if (res.data.pagination) {
+        setPagination(res.data.pagination);
+      }
     }
     setLoading(false);
     setHasLoaded(true);
+  };
+
+  // Reset to page 1 when filter changes
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
   };
 
   const filteredQuotations = quotations.filter(q => {
@@ -94,7 +114,7 @@ export default function QuotationsPage() {
           <select 
             className="select min-w-[180px]"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => handleStatusFilterChange(e.target.value)}
           >
             {statusOptions.map(option => (
               <option key={option.value} value={option.value}>
@@ -203,12 +223,39 @@ export default function QuotationsPage() {
               ))}
             </div>
 
-            {/* Footer */}
-            <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50">
-              <p className="text-sm text-slate-500">
-                {filteredQuotations.length} quotation{filteredQuotations.length !== 1 ? 's' : ''}
-              </p>
-            </div>
+            {/* Footer with Pagination */}
+            {pagination && pagination.totalPages > 1 ? (
+              <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                <p className="text-sm text-slate-500">
+                  Showing {((pagination.page - 1) * pagination.pageSize) + 1} to {Math.min(pagination.page * pagination.pageSize, pagination.totalItems)} of {pagination.totalItems} quotations
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 border border-slate-200 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-3 py-1 text-sm text-slate-600">
+                    Page {pagination.page} of {pagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
+                    disabled={currentPage === pagination.totalPages}
+                    className="px-3 py-1 border border-slate-200 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50">
+                <p className="text-sm text-slate-500">
+                  {filteredQuotations.length} quotation{filteredQuotations.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+            )}
           </>
         )}
       </div>
