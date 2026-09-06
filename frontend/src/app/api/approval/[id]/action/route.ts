@@ -76,17 +76,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Check if user can approve this level
     const userRole = session.user.role;
-    if (approval.level === ApprovalLevel.MANAGER && userRole === UserRole.FINANCE_OPS) {
-      // Finance can't approve manager-level approvals (unless they're admin)
+    const cannotApprove =
+      (approval.level === ApprovalLevel.MANAGER && userRole === UserRole.FINANCE_OPS) ||
+      (approval.level === ApprovalLevel.FINANCE && userRole === UserRole.SALES_MANAGER);
+
+    if (cannotApprove) {
       return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Finance users cannot approve manager-level approvals' } },
-        { status: 403 }
-      );
-    }
-    if (approval.level === ApprovalLevel.FINANCE && userRole === UserRole.SALES_MANAGER) {
-      // Manager can't approve finance-level approvals (unless they're admin)
-      return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Managers cannot approve finance-level approvals' } },
+        { success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to approve this level' } },
         { status: 403 }
       );
     }

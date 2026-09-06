@@ -144,15 +144,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           );
         }
 
-        if (quotation.status === 'PENDING_MANAGER_APPROVAL') {
-          // Enforce role-based approval: Only Manager or Admin can approve manager-level
-          if (session.user.role === UserRole.FINANCE_OPS) {
-            return NextResponse.json(
-              { success: false, error: { code: 'FORBIDDEN', message: 'Finance users cannot approve manager-level approvals. Please wait for a Sales Manager to approve first.' } },
-              { status: 403 }
-            );
-          }
+        // Enforce role-based approval
+        const cannotApprove =
+          (quotation.status === 'PENDING_MANAGER_APPROVAL' && session.user.role === UserRole.FINANCE_OPS) ||
+          (quotation.status === 'PENDING_FINANCE_APPROVAL' && session.user.role === UserRole.SALES_MANAGER);
 
+        if (cannotApprove) {
+          return NextResponse.json(
+            { success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to approve this level' } },
+            { status: 403 }
+          );
+        }
+
+        if (quotation.status === 'PENDING_MANAGER_APPROVAL') {
           // Re-evaluate to check if finance approval is needed
           riskResult = await evaluateQuotation(quotationId);
           
@@ -175,14 +179,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             data: { status: 'APPROVED', approverId: session.user.id, actedAt: new Date() },
           });
         } else if (quotation.status === 'PENDING_FINANCE_APPROVAL') {
-          // Enforce role-based approval: Only Finance or Admin can approve finance-level
-          if (session.user.role === UserRole.SALES_MANAGER) {
-            return NextResponse.json(
-              { success: false, error: { code: 'FORBIDDEN', message: 'Sales Managers cannot approve finance-level approvals. Please wait for Finance to approve.' } },
-              { status: 403 }
-            );
-          }
-
           newStatus = QuotationStatus.APPROVED;
           
           await prisma.approval.updateMany({
@@ -235,15 +231,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }
 
         // Enforce role-based rejection
-        if (quotation.status === 'PENDING_MANAGER_APPROVAL' && session.user.role === UserRole.FINANCE_OPS) {
+        const cannotReject =
+          (quotation.status === 'PENDING_MANAGER_APPROVAL' && session.user.role === UserRole.FINANCE_OPS) ||
+          (quotation.status === 'PENDING_FINANCE_APPROVAL' && session.user.role === UserRole.SALES_MANAGER);
+
+        if (cannotReject) {
           return NextResponse.json(
-            { success: false, error: { code: 'FORBIDDEN', message: 'Finance users cannot reject manager-level approvals' } },
-            { status: 403 }
-          );
-        }
-        if (quotation.status === 'PENDING_FINANCE_APPROVAL' && session.user.role === UserRole.SALES_MANAGER) {
-          return NextResponse.json(
-            { success: false, error: { code: 'FORBIDDEN', message: 'Sales Managers cannot reject finance-level approvals' } },
+            { success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to reject this level' } },
             { status: 403 }
           );
         }
@@ -296,15 +290,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }
 
         // Enforce role-based return
-        if (quotation.status === 'PENDING_MANAGER_APPROVAL' && session.user.role === UserRole.FINANCE_OPS) {
+        const cannotReturn =
+          (quotation.status === 'PENDING_MANAGER_APPROVAL' && session.user.role === UserRole.FINANCE_OPS) ||
+          (quotation.status === 'PENDING_FINANCE_APPROVAL' && session.user.role === UserRole.SALES_MANAGER);
+
+        if (cannotReturn) {
           return NextResponse.json(
-            { success: false, error: { code: 'FORBIDDEN', message: 'Finance users cannot return manager-level approvals' } },
-            { status: 403 }
-          );
-        }
-        if (quotation.status === 'PENDING_FINANCE_APPROVAL' && session.user.role === UserRole.SALES_MANAGER) {
-          return NextResponse.json(
-            { success: false, error: { code: 'FORBIDDEN', message: 'Sales Managers cannot return finance-level approvals' } },
+            { success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to return this level' } },
             { status: 403 }
           );
         }
