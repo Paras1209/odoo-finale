@@ -34,6 +34,8 @@ export default function PortalLayout({
   const [wasAuthenticated, setWasAuthenticated] = useState(false);
 
   const isLoginPage = pathname === '/portal/login';
+  const isSignupPage = pathname === '/portal/signup';
+  const isPublicPage = isLoginPage || isSignupPage;
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.actorType === ActorType.CUSTOMER) {
@@ -42,7 +44,7 @@ export default function PortalLayout({
   }, [status, session]);
 
   useEffect(() => {
-    if (isLoginPage) return;
+    if (isPublicPage) return;
     
     // Only redirect if we're definitively unauthenticated and never were authenticated
     if (status === 'unauthenticated' && !wasAuthenticated) {
@@ -50,12 +52,17 @@ export default function PortalLayout({
     } else if (status === 'authenticated' && session?.user?.actorType !== ActorType.CUSTOMER) {
       router.push('/workspace');
     }
-  }, [status, session, router, isLoginPage, wasAuthenticated]);
+  }, [status, session, router, isPublicPage, wasAuthenticated]);
 
   // Close mobile nav on route change
   useEffect(() => {
     setMobileNavOpen(false);
   }, [pathname]);
+
+  // For public pages (login/signup), render children immediately without portal chrome
+  if (isPublicPage) {
+    return <>{children}</>;
+  }
 
   const handleSignOut = async () => {
     setIsLoggingOut(true);
@@ -67,11 +74,6 @@ export default function PortalLayout({
       setIsLoggingOut(false);
     }
   };
-
-  // Don't apply layout to login page
-  if (isLoginPage) {
-    return <>{children}</>;
-  }
 
   // Show full-page loading ONLY on very first load (before any successful auth)
   // Once authenticated, never show the layout loader again

@@ -7,9 +7,9 @@
 // modify and cancel actions with proration preview
 // ===========================================
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 
 interface BillingSchedule {
@@ -101,8 +101,8 @@ interface CancelPreview {
   upcomingSchedulesToCancel: number;
 }
 
-export default function SubscriptionDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
+export default function SubscriptionDetailPage() {
+  const params = useParams<{ id: string }>();
   const router = useRouter();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,14 +123,16 @@ export default function SubscriptionDetailPage({ params }: { params: Promise<{ i
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    fetchSubscription();
-  }, [resolvedParams.id]);
+    if (params.id) {
+      fetchSubscription();
+    }
+  }, [params.id]);
 
   const fetchSubscription = async () => {
     setLoading(true);
     setError(null);
     
-    const res = await api.get<any>(`/billing/subscriptions/${resolvedParams.id}`);
+    const res = await api.get<any>(`/billing/subscriptions/${params.id}`);
     if (res.success && res.data) {
       setSubscription(res.data.data || res.data);
       setNewQuantity(res.data.data?.quantity || res.data.quantity || 1);
@@ -142,7 +144,7 @@ export default function SubscriptionDetailPage({ params }: { params: Promise<{ i
 
   const fetchModifyPreview = async (qty: number) => {
     setModifyLoading(true);
-    const res = await api.post<any>(`/billing/subscriptions/${resolvedParams.id}?action=preview-modify`, {
+    const res = await api.post<any>(`/billing/subscriptions/${params.id}?action=preview-modify`, {
       newQuantity: qty,
     });
     if (res.success && res.data) {
@@ -153,7 +155,7 @@ export default function SubscriptionDetailPage({ params }: { params: Promise<{ i
 
   const fetchCancelPreview = async () => {
     setCancelLoading(true);
-    const res = await api.post<any>(`/billing/subscriptions/${resolvedParams.id}?action=preview-cancel`, {});
+    const res = await api.post<any>(`/billing/subscriptions/${params.id}?action=preview-cancel`, {});
     if (res.success && res.data) {
       setCancelPreview(res.data.data || res.data);
     }
@@ -162,7 +164,7 @@ export default function SubscriptionDetailPage({ params }: { params: Promise<{ i
 
   const handleModify = async () => {
     setActionLoading(true);
-    const res = await api.post<any>(`/billing/subscriptions/${resolvedParams.id}?action=modify`, {
+    const res = await api.post<any>(`/billing/subscriptions/${params.id}?action=modify`, {
       newQuantity,
     });
     setActionLoading(false);
@@ -183,7 +185,7 @@ export default function SubscriptionDetailPage({ params }: { params: Promise<{ i
     }
     
     setActionLoading(true);
-    const res = await api.post<any>(`/billing/subscriptions/${resolvedParams.id}?action=cancel`, {
+    const res = await api.post<any>(`/billing/subscriptions/${params.id}?action=cancel`, {
       reason: cancelReason,
     });
     setActionLoading(false);

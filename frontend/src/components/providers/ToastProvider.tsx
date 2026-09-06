@@ -7,7 +7,7 @@
 
 'use client';
 
-import { createContext, useContext, useState, useCallback, ReactNode, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { getUserFriendlyMessage, ErrorCode } from '@/lib/errors';
 
@@ -145,7 +145,14 @@ function ToastContainer({
   toasts: Toast[]; 
   onRemove: (id: string) => void;
 }) {
-  if (typeof window === 'undefined') return null;
+  const [mounted, setMounted] = useState(false);
+  
+  // Only render portal after client-side mount to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  if (!mounted) return null;
   
   return createPortal(
     <div 

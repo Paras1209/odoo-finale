@@ -189,14 +189,10 @@ export default function PortalAccountPage() {
             </span>
           </div>
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="text-sm">
               <div>
                 <span className="text-gray-500">Email:</span>
                 <span className="ml-2 text-gray-900 font-medium">{account.email}</span>
-              </div>
-              <div>
-                <span className="text-gray-500">Account ID:</span>
-                <span className="ml-2 text-gray-900 font-mono text-xs">{account.id.slice(0, 8)}...</span>
               </div>
             </div>
           </div>

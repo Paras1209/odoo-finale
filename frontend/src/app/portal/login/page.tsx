@@ -186,6 +186,16 @@ export default function PortalLoginPage() {
           {/* Footer */}
           <div className="mt-8 pt-6 border-t border-slate-200">
             <p className="text-sm text-slate-500 text-center">
+              Don&apos;t have an account?{' '}
+              <Link href="/portal/signup" className="font-medium text-emerald-600 hover:text-emerald-700">
+                Create one
+              </Link>
+            </p>
+          </div>
+
+          {/* Internal staff link */}
+          <div className="mt-4">
+            <p className="text-sm text-slate-500 text-center">
               Internal staff?{' '}
               <Link href="/auth/login" className="font-medium text-emerald-600 hover:text-emerald-700">
                 Sign in to Workspace

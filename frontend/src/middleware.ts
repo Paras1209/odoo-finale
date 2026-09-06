@@ -23,6 +23,7 @@ const BYPASS_PATTERNS = [
   /^\/api\/auth\//,      // NextAuth.js routes
   /^\/auth\//,           // Auth pages
   /^\/portal\/login$/,   // Portal login page
+  /^\/portal\/signup$/,  // Portal signup page
   /\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/i, // Static assets
 ];
 

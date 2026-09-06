@@ -15,6 +15,9 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'DealFlow360 - Intelligent Sales Operations',
   description: 'Streamline your sales operations with DealFlow360',
+  icons: {
+    icon: '/favicon.ico?v=2',
+  },
 };
 
 export default function RootLayout({
