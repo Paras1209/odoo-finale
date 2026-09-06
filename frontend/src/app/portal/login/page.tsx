@@ -179,8 +179,8 @@ export default function PortalLoginPage() {
           <div className="mt-6 p-4 bg-emerald-50 rounded-xl border border-emerald-200">
             <p className="text-xs font-medium text-emerald-800 uppercase tracking-wider mb-2">Demo Credentials</p>
             <div className="space-y-1 text-sm text-emerald-700">
-              <p>acme@example.com / portal123</p>
-              <p>globex@example.com / portal123</p>
+              <p>acme@example.com / password123</p>
+              <p>beta@example.com / password123</p>
             </div>
           </div>
         </div>

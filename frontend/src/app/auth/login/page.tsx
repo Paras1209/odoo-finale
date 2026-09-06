@@ -134,7 +134,7 @@ export default function LoginPage() {
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Demo Credentials</p>
             <div className="space-y-1 text-sm text-slate-600">
               <p><span className="text-slate-400">Admin:</span> admin@dealflow360.com / password123</p>
-              <p><span className="text-slate-400">Sales:</span> rep1@dealflow360.com / password123</p>
+              <p><span className="text-slate-400">Sales:</span> rep@dealflow360.com / password123</p>
             </div>
           </div>
         </div>
