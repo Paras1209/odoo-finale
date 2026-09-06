@@ -2,64 +2,51 @@
 // DealFlow360 - Portal Customer Login API
 // ===========================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { loginCustomer, isAuthError, auditLogger } from '@/lib/services';
 import { portalLoginSchema } from '@/lib/validators';
 import { ActorType } from '@/lib/types';
+import { 
+  apiSuccess, 
+  apiError, 
+  apiValidationError,
+  withErrorHandling,
+} from '@/lib/api-utils';
+import { ErrorCode, errorLogger } from '@/lib/errors';
 
 export async function POST(request: NextRequest) {
-  try {
+  return withErrorHandling('Auth/Portal/Login', async () => {
     const body = await request.json();
     const parsed = portalLoginSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid input',
-            details: parsed.error.flatten(),
-          },
-        },
-        { status: 400 }
-      );
+      return apiValidationError(parsed.error);
     }
 
     const { email, password } = parsed.data;
-    const result = await loginCustomer(email, password);
+    
+    try {
+      const result = await loginCustomer(email, password);
 
-    // Log portal login
-    await auditLogger.logAuth(result.customer.id, ActorType.CUSTOMER, 'LOGIN');
+      // Log portal login
+      await auditLogger.logAuth(result.customer.id, ActorType.CUSTOMER, 'LOGIN');
+      
+      errorLogger.info('Auth/Portal/Login', 'Customer logged in successfully', { 
+        customerId: result.customer.id 
+      });
 
-    return NextResponse.json({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    if (isAuthError(error)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: error.code,
-            message: error.message,
-          },
-        },
-        { status: 401 }
-      );
+      return apiSuccess(result);
+    } catch (error) {
+      if (isAuthError(error)) {
+        errorLogger.info('Auth/Portal/Login', 'Login failed', { 
+          email, 
+          errorCode: error.code 
+        });
+        
+        return apiError(error.code as ErrorCode, error.message);
+      }
+      
+      throw error;
     }
-
-    console.error('[Auth/Portal/Login] Error:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'An unexpected error occurred',
-        },
-      },
-      { status: 500 }
-    );
-  }
+  });
 }

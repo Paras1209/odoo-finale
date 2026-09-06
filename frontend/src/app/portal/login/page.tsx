@@ -4,9 +4,12 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useToast } from '@/components/providers';
+import { getUserFriendlyMessage, ErrorCode } from '@/lib/errors';
 
 export default function PortalLoginPage() {
   const router = useRouter();
+  const { error: showError } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,13 +28,28 @@ export default function PortalLoginPage() {
       });
 
       if (result?.error) {
-        throw new Error(result.error);
+        // Map common auth errors to user-friendly messages
+        let userMessage = result.error;
+        if (result.error === 'CredentialsSignin' || result.error.includes('credentials')) {
+          userMessage = getUserFriendlyMessage(ErrorCode.INVALID_CREDENTIALS);
+        } else if (result.error.includes('disabled')) {
+          userMessage = getUserFriendlyMessage(ErrorCode.ACCOUNT_DISABLED);
+        } else if (result.error.includes('portal')) {
+          userMessage = getUserFriendlyMessage(ErrorCode.NO_PORTAL_ACCESS);
+        }
+        setError(userMessage);
+        showError(userMessage);
+        return;
       }
 
       router.push('/portal/dashboard');
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      const message = err instanceof Error 
+        ? err.message 
+        : getUserFriendlyMessage(ErrorCode.UNKNOWN);
+      setError(message);
+      showError(message);
     } finally {
       setLoading(false);
     }

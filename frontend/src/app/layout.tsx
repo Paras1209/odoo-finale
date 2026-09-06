@@ -6,7 +6,7 @@
 
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { SessionProvider, LoadingProvider, LoadingInitializer } from '@/components/providers';
+import { SessionProvider, LoadingProvider, LoadingInitializer, ToastProvider, ToastInitializer } from '@/components/providers';
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 import './globals.css';
 
@@ -28,9 +28,12 @@ export default function RootLayout({
         <LoadingProvider>
           <LoadingInitializer />
           <LoadingOverlay />
-          <SessionProvider>
-            {children}
-          </SessionProvider>
+          <ToastProvider>
+            <ToastInitializer />
+            <SessionProvider>
+              {children}
+            </SessionProvider>
+          </ToastProvider>
         </LoadingProvider>
       </body>
     </html>

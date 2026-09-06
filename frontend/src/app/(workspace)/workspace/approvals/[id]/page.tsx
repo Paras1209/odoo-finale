@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { useToast } from '@/components/providers';
 
 interface ApprovalDetail {
   id: string;
@@ -50,6 +51,7 @@ interface ApprovalDetail {
 export default function ApprovalDetailPage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
+  const toast = useToast();
   const [approval, setApproval] = useState<ApprovalDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -72,7 +74,7 @@ export default function ApprovalDetailPage() {
 
   const handleAction = async (action: 'APPROVE' | 'REJECT' | 'RETURN') => {
     if ((action === 'REJECT' || action === 'RETURN') && !reason.trim()) {
-      alert('Please provide a reason');
+      toast.warning('Please provide a reason');
       return;
     }
 
@@ -83,10 +85,10 @@ export default function ApprovalDetailPage() {
     });
 
     if (res.success) {
-      alert(`Approval ${action.toLowerCase()}ed successfully!`);
+      toast.success(`Approval ${action.toLowerCase()}ed successfully!`);
       router.push('/workspace/approvals');
     } else {
-      alert(res.error?.message || `Failed to ${action.toLowerCase()} approval`);
+      toast.showApiError(res.error);
     }
     setActionLoading(false);
     setShowRejectModal(false);

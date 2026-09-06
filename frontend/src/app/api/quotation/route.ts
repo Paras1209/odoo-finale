@@ -2,24 +2,30 @@
 // DealFlow360 - Quotation List & Create API
 // ===========================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma, generateQuotationNumber } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { ActorType, QuotationStatus } from '@/lib/types';
 import { createQuotationSchema, paginationSchema } from '@/lib/validators';
 import { auditLogger } from '@/lib/services';
+import { 
+  apiSuccess, 
+  apiSuccessWithPagination, 
+  apiError, 
+  apiValidationError,
+  CommonErrors,
+  withErrorHandling,
+} from '@/lib/api-utils';
+import { ErrorCode, errorLogger } from '@/lib/errors';
 
 // GET /api/quotation - List all quotations
 export async function GET(request: NextRequest) {
-  try {
+  return withErrorHandling('Quotation/List', async () => {
     const session = await getSession();
-    console.log('[Quotation/List] Session:', JSON.stringify(session, null, 2));
+    errorLogger.debug('Quotation/List', 'Session retrieved', { userId: session?.user?.id });
     
     if (!session?.user || session.user.actorType !== ActorType.INTERNAL) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return CommonErrors.unauthorized();
     }
 
     const { searchParams } = new URL(request.url);
@@ -31,9 +37,12 @@ export async function GET(request: NextRequest) {
       sortBy: searchParams.get('sortBy') ?? undefined,
       sortOrder: searchParams.get('sortOrder') ?? undefined,
     };
-    console.log('[Quotation/List] Pagination input:', paginationInput);
     
-    const pagination = paginationSchema.parse(paginationInput);
+    const paginationResult = paginationSchema.safeParse(paginationInput);
+    if (!paginationResult.success) {
+      return apiValidationError(paginationResult.error);
+    }
+    const pagination = paginationResult.data;
 
     const statusParam = searchParams.get('status');
     const customerId = searchParams.get('customerId');
@@ -60,9 +69,8 @@ export async function GET(request: NextRequest) {
       prisma.quotation.count({ where }),
     ]);
 
-    return NextResponse.json({
-      success: true,
-      data: quotations.map(q => ({
+    return apiSuccessWithPagination(
+      quotations.map(q => ({
         id: q.id,
         quotationNumber: q.quotationNumber,
         customerId: q.customerId,
@@ -81,84 +89,56 @@ export async function GET(request: NextRequest) {
         createdAt: q.createdAt.toISOString(),
         lineCount: q._count.lines,
       })),
-      pagination: {
+      {
         page: pagination.page,
         pageSize: pagination.pageSize,
         totalItems: total,
         totalPages: Math.ceil(total / pagination.pageSize),
-      },
-    });
-  } catch (error) {
-    console.error('[Quotation/List] Error:', error);
-    console.error('[Quotation/List] Error stack:', error instanceof Error ? error.stack : 'N/A');
-    return NextResponse.json(
-      { success: false, error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred', details: error instanceof Error ? error.message : String(error) } },
-      { status: 500 }
+      }
     );
-  }
+  });
 }
 
 // POST /api/quotation - Create new quotation
 export async function POST(request: NextRequest) {
-  try {
-    console.log('[Quotation/Create] Starting quotation creation...');
+  return withErrorHandling('Quotation/Create', async () => {
+    errorLogger.debug('Quotation/Create', 'Starting quotation creation');
     
     const session = await getSession();
-    console.log('[Quotation/Create] Session:', JSON.stringify(session, null, 2));
+    errorLogger.debug('Quotation/Create', 'Session retrieved', { userId: session?.user?.id });
     
     if (!session?.user || session.user.actorType !== ActorType.INTERNAL) {
-      return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return CommonErrors.unauthorized();
     }
 
     const body = await request.json();
-    console.log('[Quotation/Create] Request body:', JSON.stringify(body, null, 2));
+    errorLogger.debug('Quotation/Create', 'Request body received', { customerId: body.customerId });
     
     const parsed = createQuotationSchema.safeParse(body);
 
     if (!parsed.success) {
-      console.log('[Quotation/Create] Validation failed:', parsed.error.flatten());
-      return NextResponse.json(
-        { success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid input', details: parsed.error.flatten() } },
-        { status: 400 }
-      );
+      errorLogger.info('Quotation/Create', 'Validation failed', { errors: parsed.error.flatten() });
+      return apiValidationError(parsed.error);
     }
 
     const { customerId, notes, validUntil } = parsed.data;
-    console.log('[Quotation/Create] Parsed data:', { customerId, notes, validUntil });
 
     // Verify the logged-in user exists in the database
-    // This can fail if session token is stale after database reseed
-    console.log('[Quotation/Create] Verifying rep user exists:', session.user.id);
     const repUser = await prisma.user.findUnique({ where: { id: session.user.id } });
     if (!repUser) {
-      console.error('[Quotation/Create] Rep user not found in database. Session may be stale.');
-      return NextResponse.json(
-        { success: false, error: { code: 'SESSION_INVALID', message: 'Your session is invalid. Please log out and log back in.' } },
-        { status: 401 }
-      );
+      errorLogger.warn('Quotation/Create', 'Rep user not found - session may be stale', { userId: session.user.id });
+      return CommonErrors.sessionInvalid();
     }
-    console.log('[Quotation/Create] Rep user verified:', repUser.email);
 
     // Verify customer exists
-    console.log('[Quotation/Create] Looking up customer:', customerId);
     const customer = await prisma.customer.findUnique({ where: { id: customerId } });
-    console.log('[Quotation/Create] Customer found:', customer ? customer.id : 'NOT FOUND');
-    
     if (!customer) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Customer not found' } },
-        { status: 404 }
-      );
+      return CommonErrors.notFound('Customer');
     }
 
-    console.log('[Quotation/Create] Generating quotation number...');
     const quotationNumber = await generateQuotationNumber();
-    console.log('[Quotation/Create] Generated quotation number:', quotationNumber);
+    errorLogger.debug('Quotation/Create', 'Generated quotation number', { quotationNumber });
 
-    console.log('[Quotation/Create] Creating quotation in database...');
     const quotation = await prisma.quotation.create({
       data: {
         quotationNumber,
@@ -172,43 +152,34 @@ export async function POST(request: NextRequest) {
         rep: { select: { id: true, name: true } },
       },
     });
-    console.log('[Quotation/Create] Quotation created:', quotation.id);
 
-    console.log('[Quotation/Create] Logging audit entry...');
     await auditLogger.logCreate(session.user.id, ActorType.INTERNAL, 'QUOTATION', quotation.id, {
       quotationNumber,
       customerId,
       repId: session.user.id,
     });
-    console.log('[Quotation/Create] Audit entry logged');
 
-    return NextResponse.json(
+    errorLogger.info('Quotation/Create', 'Quotation created successfully', { 
+      quotationId: quotation.id, 
+      quotationNumber 
+    });
+
+    return apiSuccess(
       {
-        success: true,
-        data: {
-          id: quotation.id,
-          quotationNumber: quotation.quotationNumber,
-          customerId: quotation.customerId,
-          customerName: quotation.customer.name,
-          customerTier: quotation.customer.tier,
-          repId: quotation.repId,
-          repName: quotation.rep.name,
-          status: quotation.status,
-          totalAmount: quotation.totalAmount.toNumber(),
-          notes: quotation.notes,
-          validUntil: quotation.validUntil?.toISOString() ?? null,
-          createdAt: quotation.createdAt.toISOString(),
-        },
-        message: 'Quotation created successfully',
+        id: quotation.id,
+        quotationNumber: quotation.quotationNumber,
+        customerId: quotation.customerId,
+        customerName: quotation.customer.name,
+        customerTier: quotation.customer.tier,
+        repId: quotation.repId,
+        repName: quotation.rep.name,
+        status: quotation.status,
+        totalAmount: quotation.totalAmount.toNumber(),
+        notes: quotation.notes,
+        validUntil: quotation.validUntil?.toISOString() ?? null,
+        createdAt: quotation.createdAt.toISOString(),
       },
-      { status: 201 }
+      201
     );
-  } catch (error) {
-    console.error('[Quotation/Create] Error:', error);
-    console.error('[Quotation/Create] Error stack:', error instanceof Error ? error.stack : 'N/A');
-    return NextResponse.json(
-      { success: false, error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred', details: error instanceof Error ? error.message : String(error) } },
-      { status: 500 }
-    );
-  }
+  });
 }

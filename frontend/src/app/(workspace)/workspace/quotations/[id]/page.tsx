@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { api, getErrorMessage } from '@/lib/api';
+import { useToast } from '@/components/providers';
 
 interface QuotationLine {
   id: string;
@@ -61,6 +62,7 @@ interface Comment {
 
 export default function QuotationBuilderPage() {
   const { id } = useParams() as { id: string };
+  const toast = useToast();
   const [quotation, setQuotation] = useState<Quotation | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -168,8 +170,9 @@ export default function QuotationBuilderPage() {
       setSelectedProductId('');
       setNewQuantity(1);
       setNewDiscountPct(0);
+      toast.success('Line item added successfully');
     } else {
-      alert(res.error?.message || 'Error adding line');
+      toast.showApiError(res.error);
     }
     setAddingLine(false);
   };
@@ -184,8 +187,9 @@ export default function QuotationBuilderPage() {
     });
     if (res.success) {
       await fetchQuotation();
+      toast.success('Line item added');
     } else {
-      alert(res.error?.message || 'Error adding line');
+      toast.showApiError(res.error);
     }
     setAddingLine(false);
   };
@@ -211,8 +215,9 @@ export default function QuotationBuilderPage() {
     if (res.success) {
       await fetchQuotation();
       setEditingLineId(null);
+      toast.success('Line item updated');
     } else {
-      alert(res.error?.message || 'Error updating line');
+      toast.showApiError(res.error);
     }
     setSavingLine(false);
   };
@@ -223,8 +228,9 @@ export default function QuotationBuilderPage() {
     const res = await api.delete<any>(`/quotation/${id}/lines/${lineId}`);
     if (res.success) {
       await fetchQuotation();
+      toast.success('Line item removed');
     } else {
-      alert(res.error?.message || 'Error removing line');
+      toast.showApiError(res.error);
     }
     setDeletingLineId(null);
   };
@@ -235,15 +241,15 @@ export default function QuotationBuilderPage() {
     if (res.success) {
       const data = res.data;
       if (data.status === 'APPROVED') {
-        alert('Quotation approved and sent to customer!');
+        toast.success('Quotation approved and sent to customer!');
       } else if (data.status === 'PENDING_MANAGER_APPROVAL') {
-        alert(`Quotation requires manager approval (Risk Score: ${data.blendedRiskScore?.toFixed(1) || '0'})`);
+        toast.warning(`Quotation requires manager approval (Risk Score: ${data.blendedRiskScore?.toFixed(1) || '0'})`);
       } else if (data.status === 'PENDING_FINANCE_APPROVAL') {
-        alert(`Quotation requires finance approval (Risk Score: ${data.blendedRiskScore?.toFixed(1) || '0'})`);
+        toast.warning(`Quotation requires finance approval (Risk Score: ${data.blendedRiskScore?.toFixed(1) || '0'})`);
       }
       await fetchQuotation();
     } else {
-      alert(res.error?.message || 'Error sending to customer');
+      toast.showApiError(res.error);
     }
     setTransitioning(false);
   };
@@ -257,8 +263,9 @@ export default function QuotationBuilderPage() {
     if (res.success) {
       setNewComment('');
       await fetchComments();
+      toast.success('Comment posted');
     } else {
-      alert(res.error?.message || 'Error posting comment');
+      toast.showApiError(res.error);
     }
     setPostingComment(false);
   };
@@ -277,9 +284,9 @@ export default function QuotationBuilderPage() {
       setCounterResponseComment('');
       await fetchQuotation();
       await fetchComments();
-      alert((res.data as { message?: string })?.message || 'Response submitted successfully');
+      toast.success((res.data as { message?: string })?.message || 'Response submitted successfully');
     } else {
-      alert(res.error?.message || 'Error responding to counter offer');
+      toast.showApiError(res.error);
     }
     setRespondingToCounter(false);
   };
